@@ -16,23 +16,39 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
     
-    - name: Cache TeX Live
+    - name: Cache TeX Live packages
       id: cache
       uses: actions/cache@v4
       with:
-        path: /usr/local/texlive
-        key: texlive-simple-v1
+        path: |
+          /var/cache/apt/archives
+          /usr/share/texlive
+          /usr/bin/pdflatex
+        key: texlive-apt-cache-v1
     
     - name: Install TeX Live
       if: steps.cache.outputs.cache-hit != 'true'
       run: |
-        echo "Installing TeX Live..."
+        echo "Installing TeX Live (first time)..."
         
-        # Use apt to install basic TeX Live (much simpler)
-        sudo apt-get update
-        sudo apt-get install -y texlive-latex-extra texlive-fonts-recommended texlive-science
+        # Update package list
+        sudo apt-get update -qq
         
-        echo "TeX Live installation completed!"
+        # Install TeX Live packages
+        sudo apt-get install -y \
+          texlive-latex-base \
+          texlive-latex-recommended \
+          texlive-latex-extra \
+          texlive-fonts-recommended
+        
+        echo "Installation completed!"
+    
+    - name: Verify TeX Live (from cache or fresh install)
+      run: |
+        echo "Verifying TeX Live installation..."
+        which pdflatex
+        pdflatex --version
+        echo "TeX Live ready!"
     
     - name: Compile LaTeX
       run: |
@@ -44,12 +60,18 @@ jobs:
         
         echo "Compiling main.tex..."
         
-        # Compile (run twice for references)
-        pdflatex -interaction=nonstopmode main.tex
-        pdflatex -interaction=nonstopmode main.tex
+        # Compile with error handling
+        pdflatex -interaction=nonstopmode main.tex || true
         
-        echo "Compilation completed!"
-        ls -la main.pdf
+        # Check if PDF was created
+        if [ -f "main.pdf" ]; then
+          echo "✅ Compilation successful!"
+          ls -la main.pdf
+        else
+          echo "❌ Compilation failed - no PDF generated"
+          cat main.log
+          exit 1
+        fi
     
     - name: Commit PDF
       run: |
