@@ -70,10 +70,6 @@ jobs:
         # Install to user directory (no sudo needed)
         ./install-tl -profile texlive.profile
         
-        # Install additional packages
-        ~/texlive/2023/bin/x86_64-linux/tlmgr install \
-          amsmath amsfonts amssymb geometry
-        
         echo "TeX Live installed to user directory!"
     
     - name: Setup TeX Live PATH
