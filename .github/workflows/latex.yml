@@ -147,7 +147,7 @@ jobs:
           ["shapes.arrows"]="pgf"       # Arrow shapes
           ["arrows.meta"]="pgf"         # Advanced arrows
           ["positioning"]="pgf"         # Node positioning
-
+          ["xpatch"]="xpatch"
         )
         
         MISSING_PACKAGES=()
