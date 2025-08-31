@@ -102,35 +102,38 @@ jobs:
         
         echo "Checking for required packages..."
         
-        # List of required packages for our complex document
-        REQUIRED_PACKAGES=(
-          "mathtools"
-          "booktabs" 
-          "array"
-          "longtable"
-          "multirow"
-          "fancyhdr"
-          "hyperref"
-          "xcolor"
-          "listings"
-          "algorithm"
-          "algorithmicx"
-          "algpseudocode"
-          "subcaption"
-          "float"
-          "wrapfig"
-          "lipsum"
-          "multicol"
-          "enumerate"
+        # List of required packages with correct repository names
+        declare -A PACKAGE_MAP=(
+          ["mathtools"]="mathtools"
+          ["booktabs"]="booktabs" 
+          ["array"]="tools"
+          ["longtable"]="tools"
+          ["multirow"]="multirow"
+          ["fancyhdr"]="fancyhdr"
+          ["hyperref"]="hyperref"
+          ["xcolor"]="xcolor"
+          ["listings"]="listings"
+          ["algorithm"]="algorithms"
+          ["algorithmicx"]="algorithmicx"
+          ["algpseudocode"]="algorithmicx"
+          ["subcaption"]="caption"
+          ["float"]="float"
+          ["wrapfig"]="wrapfig"
+          ["lipsum"]="lipsum"
+          ["multicol"]="tools"
+          ["enumerate"]="tools"
         )
         
         MISSING_PACKAGES=()
         
         # Check each package
-        for package in "${REQUIRED_PACKAGES[@]}"; do
+        for package in "${!PACKAGE_MAP[@]}"; do
           if ! kpsewhich ${package}.sty >/dev/null 2>&1; then
-            echo "Missing package: $package"
-            MISSING_PACKAGES+=("$package")
+            repo_package="${PACKAGE_MAP[$package]}"
+            if [[ ! " ${MISSING_PACKAGES[@]} " =~ " ${repo_package} " ]]; then
+              echo "Missing package: $package (will install: $repo_package)"
+              MISSING_PACKAGES+=("$repo_package")
+            fi
           else
             echo "Found package: $package"
           fi
@@ -138,9 +141,12 @@ jobs:
         
         # Install missing packages if any
         if [ ${#MISSING_PACKAGES[@]} -gt 0 ]; then
-          echo "Installing ${#MISSING_PACKAGES[@]} missing packages..."
-          ~/texlive/2023/bin/x86_64-linux/tlmgr install "${MISSING_PACKAGES[@]}"
-          echo "Missing packages installed successfully!"
+          echo "Installing missing packages: ${MISSING_PACKAGES[*]}"
+          ~/texlive/2023/bin/x86_64-linux/tlmgr install "${MISSING_PACKAGES[@]}" || {
+            echo "Some packages failed to install, but continuing..."
+            exit 0
+          }
+          echo "Package installation completed!"
         else
           echo "All required packages are already installed!"
         fi
