@@ -105,7 +105,7 @@ jobs:
         echo "Checking for required packages..."
         
         # List of required packages with correct repository names
-        declare -A PACKAGE_MAP=(
+        declare -A packages=(
           ["mathtools"]="mathtools"
           ["booktabs"]="booktabs" 
           ["array"]="tools"
@@ -126,29 +126,25 @@ jobs:
           ["enumerate"]="tools"
           ["tikz"]="pgf"
           ["pgfplots"]="pgfplots"
+          ["pgfplotstable"]="pgfplots"
           ["tikz-3dplot"]="tikz-3dplot"
+          ["tkz-euclide"]="tkz-euclide"
+          ["bm"]="tools"
+          ["physics"]="physics"
+          ["siunitx"]="siunitx"
           ["babel"]="babel"
           ["fontspec"]="fontspec"
           ["polyglossia"]="polyglossia"
           ["bidi"]="bidi"
           ["graphics"]="graphics"
           ["graphicx"]="graphics"
-          ["pgfplots"]="pgfplots"
-          ["pgfplotstable"]="pgfplots"  # For table operations in pgfplots
-          ["tikz-3dplot"]="tikz-3dplot"
-          ["tkz-euclide"]="tkz-euclide" # For Euclidean geometry constructions
-          ["bm"]="tools"                # For bold math symbols
-          ["physics"]="physics"         # For physics notation
-          ["siunitx"]="siunitx"         # For SI units formatting
-          ["3d"]="pgf"                  # 3D library
-          ["calc"]="pgf"                # Calculation library
-          ["decorations.pathmorphing"]="pgf" # Path morphing decorations
-          ["patterns"]="pgf"            # Pattern library
-          ["shapes.arrows"]="pgf"       # Arrow shapes
-          ["arrows.meta"]="pgf"         # Advanced arrows
-          ["positioning"]="pgf"         # Node positioning
-          ["xpatch"]="xpatch"
-        )
+          ["amsmath"]="amsmath"
+          ["amssymb"]="amssymb"
+          ["amsthm"]="amsthm"
+          ["enumitem"]="enumitem"
+          ["caption"]="caption"
+          ["xpatch"]="xpatch"  # Added missing package
+      )
         
         MISSING_PACKAGES=()
         
