@@ -75,7 +75,9 @@ jobs:
           mathtools booktabs array longtable multirow \
           fancyhdr hyperref xcolor listings algorithm \
           algorithmicx algpseudocode subcaption float \
-          wrapfig lipsum tikz-3dplot
+          wrapfig lipsum tikz-3dplot pgf pgfplots \
+          amsmath amsfonts amssymb amsthm geometry \
+          graphicx babel fontenc inputenc etoolbox
         
         echo "TeX Live installed to user directory!"
     
@@ -158,27 +160,6 @@ jobs:
           echo "Package installation completed!"
         else
           echo "All required packages are already installed!"
-        fi
-    
-    - name: Compile LaTeX
-      run: |
-        export PATH="$HOME/texlive/2023/bin/x86_64-linux:$PATH"
-        
-        if [ ! -f "main.tex" ]; then
-          echo "Error: main.tex not found!"
-          exit 1
-        fi
-        
-        echo "Compiling main.tex..."
-        pdflatex -interaction=nonstopmode main.tex || true
-        
-        if [ -f "main.pdf" ]; then
-          echo "Compilation successful!"
-          ls -la main.pdf
-        else
-          echo "Compilation failed"
-          cat main.log
-          exit 1
         fi
     
     - name: Compile LaTeX
