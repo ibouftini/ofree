@@ -70,6 +70,13 @@ jobs:
         # Install to user directory (no sudo needed)
         ./install-tl -profile texlive.profile
         
+        # Install commonly needed packages that aren't in basic scheme
+        ~/texlive/2023/bin/x86_64-linux/tlmgr install \
+          mathtools booktabs array longtable multirow \
+          fancyhdr hyperref xcolor listings algorithm \
+          algorithmicx algpseudocode subcaption float \
+          wrapfig lipsum
+        
         echo "TeX Live installed to user directory!"
     
     - name: Setup TeX Live PATH
