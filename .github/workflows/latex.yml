@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
- 
+
 jobs:
   test-cache:
     runs-on: ubuntu-latest
@@ -30,35 +30,47 @@ jobs:
         path: |
           test-cache-dir/
           ~/.cache/test-data
-        key: test-cache-${{ runner.os }}-${{ hashFiles('**/package.json', '**/*.txt') }}
+        key: test-cache-${{ runner.os }}-v1
         restore-keys: |
           test-cache-${{ runner.os }}-
           test-cache-
     
     - name: Check if cache was restored
       run: |
-        echo "Cache hit: ${{ steps.cache-restore.outputs.cache-hit }}"
+        echo "Cache hit: '${{ steps.cache-restore.outputs.cache-hit }}'"
+        echo "Cache matched key: '${{ steps.cache-restore.outputs.cache-matched-key }}'"
         if [ "${{ steps.cache-restore.outputs.cache-hit }}" = "true" ]; then
           echo "✅ Cache was restored successfully!"
           echo "Contents of cached directory:"
           ls -la test-cache-dir/ || echo "Directory doesn't exist"
           cat test-cache-dir/test-file.txt || echo "File doesn't exist"
+          echo "Contents of ~/.cache/test-data:"
+          ls -la ~/.cache/test-data/ || echo "Cache directory doesn't exist"
         else
           echo "❌ Cache miss - creating new data"
         fi
     
     - name: Create additional data (simulating installation)
+      if: steps.cache-restore.outputs.cache-hit != 'true'
       run: |
+        echo "🔧 No cache found - creating fresh data..."
         mkdir -p ~/.cache/test-data
         echo "Simulating package installation..." 
         echo "Package data created at $(date)" > ~/.cache/test-data/package-info.txt
         echo "Version: 1.0.0" > ~/.cache/test-data/version.txt
         
-        # Add more files to test directory
+        # Add more files to test directory only if not cached
         echo "Additional file after cache check" > test-cache-dir/post-cache-file.txt
         
         echo "Current directory contents:"
         find test-cache-dir/ -type f -exec echo "File: {}" \; -exec cat {} \;
+    
+    - name: Use cached data
+      if: steps.cache-restore.outputs.cache-hit == 'true'
+      run: |
+        echo "🚀 Using cached data - skipping installation!"
+        echo "Cached files found:"
+        find test-cache-dir/ ~/.cache/test-data -type f -exec echo "File: {}" \; -exec cat {} \;
     
     - name: Save cache
       id: cache-save  
