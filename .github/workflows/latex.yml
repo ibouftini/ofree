@@ -1,103 +1,183 @@
-name: Cache Test Workflow
+name: Production Cache Test
 
 on:
   push:
-    branches: [ main ] 
+    branches: [ main ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
 
 jobs:
-  test-cache:
+  cache-test:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout code
+    - name: Checkout repository
       uses: actions/checkout@v4
     
-    - name: Create test directory
-      run: |
-        mkdir -p test-cache-dir
-        echo "This is a test file created at $(date)" > test-cache-dir/test-file.txt
-        echo "Another file with random data: $RANDOM" > test-cache-dir/random-data.txt
-        ls -la test-cache-dir/
-    
-    # Try to restore cache first
-    - name: Restore cache
-      id: cache-restore
-      uses: actions/cache/restore@v4
+    - name: Cache heavy installation
+      id: cache
+      uses: actions/cache@v4
       with:
         path: |
-          test-cache-dir/
-          ~/.cache/test-data
-        key: test-cache-${{ runner.os }}-v1
-        restore-keys: |
-          test-cache-${{ runner.os }}-
-          test-cache-
+          ~/production-cache
+          /tmp/production-install
+        key: production-v1-${{ runner.os }}
     
-    - name: Check if cache was restored
+    - name: "🔍 Cache Status Check"
       run: |
-        echo "Cache hit: '${{ steps.cache-restore.outputs.cache-hit }}'"
-        echo "Cache matched key: '${{ steps.cache-restore.outputs.cache-matched-key }}'"
-        if [ "${{ steps.cache-restore.outputs.cache-hit }}" = "true" ]; then
-          echo "✅ Cache was restored successfully!"
-          echo "Contents of cached directory:"
-          ls -la test-cache-dir/ || echo "Directory doesn't exist"
-          cat test-cache-dir/test-file.txt || echo "File doesn't exist"
-          echo "Contents of ~/.cache/test-data:"
-          ls -la ~/.cache/test-data/ || echo "Cache directory doesn't exist"
+        echo "===================="
+        echo "CACHE STATUS CHECK"
+        echo "===================="
+        echo "Cache hit: ${{ steps.cache.outputs.cache-hit }}"
+        echo "Cache key: production-v1-${{ runner.os }}"
+        echo "Runner OS: ${{ runner.os }}"
+        echo "Timestamp: $(date)"
+        
+        if [ "${{ steps.cache.outputs.cache-hit }}" = "true" ]; then
+          echo "✅ CACHE HIT - Using cached installation"
+          echo "Cached files found:"
+          ls -la ~/production-cache/ 2>/dev/null || echo "No ~/production-cache found"
+          ls -la /tmp/production-install/ 2>/dev/null || echo "No /tmp/production-install found"
         else
-          echo "❌ Cache miss - creating new data"
+          echo "❌ CACHE MISS - Will perform fresh installation"
         fi
     
-    - name: Create additional data (simulating installation)
-      if: steps.cache-restore.outputs.cache-hit != 'true'
+    # INSTALLATION STEP - Only runs on cache miss
+    - name: "🚀 Heavy Installation (Simulated)"
+      if: steps.cache.outputs.cache-hit != 'true'
       run: |
-        echo "🔧 No cache found - creating fresh data..."
-        mkdir -p ~/.cache/test-data
-        echo "Simulating package installation..." 
-        echo "Package data created at $(date)" > ~/.cache/test-data/package-info.txt
-        echo "Version: 1.0.0" > ~/.cache/test-data/version.txt
+        echo "========================================="
+        echo "PERFORMING HEAVY INSTALLATION"
+        echo "========================================="
+        echo "⏳ This would normally take 5-10 minutes..."
         
-        # Add more files to test directory only if not cached
-        echo "Additional file after cache check" > test-cache-dir/post-cache-file.txt
+        # Simulate downloading and installing heavy software
+        mkdir -p ~/production-cache/bin
+        mkdir -p ~/production-cache/lib
+        mkdir -p ~/production-cache/config
+        mkdir -p /tmp/production-install
         
-        echo "Current directory contents:"
-        find test-cache-dir/ -type f -exec echo "File: {}" \; -exec cat {} \;
+        echo "📥 Downloading packages..."
+        sleep 2
+        
+        # Create fake binaries and libraries
+        echo '#!/bin/bash\necho "Production Tool v1.0"' > ~/production-cache/bin/production-tool
+        chmod +x ~/production-cache/bin/production-tool
+        
+        echo "library_data_v1.0" > ~/production-cache/lib/libproduction.so
+        echo "config_setting=enabled\nversion=1.0.0" > ~/production-cache/config/settings.conf
+        
+        # Create installation metadata
+        echo "installed_at=$(date)" > /tmp/production-install/install-info.txt
+        echo "installation_size=250MB" >> /tmp/production-install/install-info.txt
+        echo "packages=tool,lib,config" >> /tmp/production-install/install-info.txt
+        
+        echo "✅ Installation completed successfully!"
+        echo "📊 Installation summary:"
+        echo "  - Binaries: $(ls ~/production-cache/bin/ | wc -l)"
+        echo "  - Libraries: $(ls ~/production-cache/lib/ | wc -l)" 
+        echo "  - Config files: $(ls ~/production-cache/config/ | wc -l)"
+        echo "  - Total size: $(du -sh ~/production-cache | cut -f1)"
     
-    - name: Use cached data
-      if: steps.cache-restore.outputs.cache-hit == 'true'
+    # SETUP STEP - Runs always (both cache hit and miss)
+    - name: "⚙️ Setup Environment"
       run: |
-        echo "🚀 Using cached data - skipping installation!"
-        echo "Cached files found:"
-        find test-cache-dir/ ~/.cache/test-data -type f -exec echo "File: {}" \; -exec cat {} \;
+        echo "=============================="
+        echo "SETTING UP ENVIRONMENT"
+        echo "=============================="
+        
+        # Add to PATH
+        echo "$HOME/production-cache/bin" >> $GITHUB_PATH
+        export PATH="$HOME/production-cache/bin:$PATH"
+        
+        # Verify installation
+        if [ -f "$HOME/production-cache/bin/production-tool" ]; then
+          echo "✅ Production tool found and ready"
+          ~/production-cache/bin/production-tool
+        else
+          echo "❌ Production tool not found!"
+          exit 1
+        fi
+        
+        # Show configuration
+        if [ -f "$HOME/production-cache/config/settings.conf" ]; then
+          echo "📋 Configuration loaded:"
+          cat ~/production-cache/config/settings.conf
+        fi
+        
+        # Show installation info if available
+        if [ -f "/tmp/production-install/install-info.txt" ]; then
+          echo "ℹ️ Installation details:"
+          cat /tmp/production-install/install-info.txt
+        fi
     
-    - name: Save cache
-      id: cache-save  
-      uses: actions/cache/save@v4
-      if: steps.cache-restore.outputs.cache-hit != 'true'
+    # USAGE STEP - Demonstrates using the cached/installed tools
+    - name: "🛠️ Use Production Tools"
+      run: |
+        echo "=============================="
+        echo "USING PRODUCTION TOOLS"
+        echo "=============================="
+        
+        export PATH="$HOME/production-cache/bin:$PATH"
+        
+        # Run the tool
+        echo "Running production tool:"
+        production-tool
+        
+        # Show all available tools
+        echo "Available tools:"
+        ls -la ~/production-cache/bin/
+        
+        # Show libraries
+        echo "Available libraries:"
+        ls -la ~/production-cache/lib/
+        
+        # Process some work (simulated)
+        echo "🔄 Processing work with cached tools..."
+        echo "Work completed at $(date)" > work-output.txt
+        echo "Used cached installation: ${{ steps.cache.outputs.cache-hit }}" >> work-output.txt
+        
+        echo "✅ Work completed successfully!"
+        cat work-output.txt
+    
+    # VERIFICATION STEP - Final checks
+    - name: "✅ Final Verification"
+      run: |
+        echo "=============================="
+        echo "FINAL VERIFICATION"
+        echo "=============================="
+        
+        # Check if cache worked properly
+        if [ "${{ steps.cache.outputs.cache-hit }}" = "true" ]; then
+          echo "🚀 SUCCESS: Cache was used - fast execution!"
+          echo "⏱️ This run should have been much faster"
+        else
+          echo "🔄 First run: Installation completed and cached"
+          echo "⏱️ Next run will be much faster using cache"
+        fi
+        
+        # Show final state
+        echo "📊 Final installation state:"
+        echo "  - Cache directory: $(du -sh ~/production-cache 2>/dev/null || echo '0')"
+        echo "  - Install directory: $(du -sh /tmp/production-install 2>/dev/null || echo '0')"
+        echo "  - Total files cached: $(find ~/production-cache /tmp/production-install -type f 2>/dev/null | wc -l)"
+        
+        # Create summary
+        echo "CACHE TEST SUMMARY" > cache-test-summary.txt
+        echo "=================" >> cache-test-summary.txt
+        echo "Cache hit: ${{ steps.cache.outputs.cache-hit }}" >> cache-test-summary.txt
+        echo "Run time: $(date)" >> cache-test-summary.txt
+        echo "Status: SUCCESS ✅" >> cache-test-summary.txt
+        
+        cat cache-test-summary.txt
+    
+    # Upload artifacts for verification
+    - name: "📤 Upload Test Results"
+      uses: actions/upload-artifact@v4
       with:
+        name: cache-test-results
         path: |
-          test-cache-dir/
-          ~/.cache/test-data
-        key: ${{ steps.cache-restore.outputs.cache-primary-key }}
-    
-    - name: Verify cache save
-      run: |
-        echo "Cache save result: ${{ steps.cache-save.outcome }}"
-        echo "All files that should be cached:"
-        find test-cache-dir/ ~/.cache/test-data -type f 2>/dev/null || echo "Some paths don't exist"
-    
-    - name: Test file permissions
-      run: |
-        echo "Testing file permissions:"
-        ls -la test-cache-dir/
-        ls -la ~/.cache/test-data/
-        
-        echo "Current user: $(whoami)"
-        echo "Current groups: $(groups)"
-        
-        # Test if we can read the files
-        echo "Testing read access:"
-        cat test-cache-dir/test-file.txt
-        cat ~/.cache/test-data/package-info.txt
+          work-output.txt
+          cache-test-summary.txt
+        retention-days: 7
