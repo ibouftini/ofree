@@ -16,59 +16,100 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
     
-    - name: Cache TeX Live packages
+    - name: Cache TeX Live
       id: cache
       uses: actions/cache@v4
       with:
-        path: |
-          /var/cache/apt/archives
-          /usr/share/texlive
-          /usr/bin/pdflatex
-        key: texlive-apt-cache-v1
+        path: ~/texlive
+        key: texlive-user-install-v1
     
-    - name: Install TeX Live
+    - name: Install TeX Live to user directory
       if: steps.cache.outputs.cache-hit != 'true'
       run: |
-        echo "Installing TeX Live (first time)..."
+        echo "Installing TeX Live to ~/texlive..."
         
-        # Update package list
-        sudo apt-get update -qq
+        # Create installation directory
+        mkdir -p ~/texlive-temp
+        cd ~/texlive-temp
         
-        # Install TeX Live packages
-        sudo apt-get install -y \
-          texlive-latex-base \
-          texlive-latex-recommended \
-          texlive-latex-extra \
-          texlive-fonts-recommended
+        # Download installer
+        wget -q http://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz
+        tar -xzf install-tl-unx.tar.gz
         
-        echo "Installation completed!"
+        # Find and enter installer directory
+        INSTALL_DIR=$(find . -name "install-tl-2*" -type d | head -1)
+        cd "$INSTALL_DIR"
+        
+        # Create installation profile for user directory
+        cat > texlive.profile << 'EOF'
+        selected_scheme scheme-basic
+        TEXDIR ~/texlive/2023
+        TEXMFCONFIG ~/texlive/2023/texmf-config
+        TEXMFHOME ~/texlive/2023/texmf
+        TEXMFLOCAL ~/texlive/2023/texmf-local
+        TEXMFSYSCONFIG ~/texlive/2023/texmf-config
+        TEXMFSYSVAR ~/texlive/2023/texmf-var
+        TEXMFVAR ~/texlive/2023/texmf-var
+        option_adjustrepo 1
+        option_autobackup 1
+        option_desktop_integration 0
+        option_doc 0
+        option_file_assocs 0
+        option_fmt 1
+        option_letter 0
+        option_menu_integration 0
+        option_path 0
+        option_post_code 1
+        option_src 0
+        option_sys_bin ~/texlive/2023/bin
+        option_sys_info ~/texlive/2023/share/info
+        option_sys_man ~/texlive/2023/share/man
+        option_w32_multi_user 0
+        EOF
+        
+        # Install to user directory (no sudo needed)
+        ./install-tl -profile texlive.profile
+        
+        # Install additional packages
+        ~/texlive/2023/bin/x86_64-linux/tlmgr install \
+          amsmath amsfonts amssymb geometry
+        
+        echo "TeX Live installed to user directory!"
     
-    - name: Verify TeX Live (from cache or fresh install)
+    - name: Setup TeX Live PATH
       run: |
-        echo "Verifying TeX Live installation..."
+        # Add TeX Live to PATH
+        echo "$HOME/texlive/2023/bin/x86_64-linux" >> $GITHUB_PATH
+        
+        # Verify installation
+        export PATH="$HOME/texlive/2023/bin/x86_64-linux:$PATH"
         which pdflatex
         pdflatex --version
-        echo "TeX Live ready!"
+        
+        echo "Cache hit: ${{ steps.cache.outputs.cache-hit }}"
+        if [ "${{ steps.cache.outputs.cache-hit }}" = "true" ]; then
+          echo "Using cached TeX Live installation!"
+        else
+          echo "Fresh TeX Live installation completed!"
+        fi
     
     - name: Compile LaTeX
       run: |
-        # Check if main.tex exists
+        export PATH="$HOME/texlive/2023/bin/x86_64-linux:$PATH"
+        
         if [ ! -f "main.tex" ]; then
           echo "Error: main.tex not found!"
           exit 1
         fi
         
         echo "Compiling main.tex..."
-        
-        # Compile with error handling
         pdflatex -interaction=nonstopmode main.tex || true
         
-        # Check if PDF was created
         if [ -f "main.pdf" ]; then
-          echo "✅ Compilation successful!"
+          echo "Compilation successful!"
           ls -la main.pdf
         else
-          echo "❌ Compilation failed - no PDF generated"
+          echo "Compilation failed"
           cat main.log
           exit 1
         fi
