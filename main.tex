@@ -1,11 +1,11 @@
 \documentclass[12pt,a4paper,twoside]{article}
 
-% Essential packages
+% Core packages
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage[english]{babel} 
+\usepackage[english,arabic,chinese]{babel}
 \usepackage{geometry}
-\usepackage{amsmath,amsfonts,amssymb,amsthm} 
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
 \usepackage{mathtools}
 \usepackage{graphicx}
 \usepackage{booktabs}
@@ -25,6 +25,46 @@
 \usepackage{wrapfig}
 \usepackage{lipsum}
 
+% Advanced graphics and plotting
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{tikz-3dplot}
+
+% TikZ libraries
+\usetikzlibrary{
+    3d,
+    arrows,
+    arrows.meta,
+    calc,
+    decorations.markings,
+    decorations.pathreplacing,
+    matrix,
+    patterns,
+    positioning,
+    shapes,
+    shapes.geometric,
+    shapes.misc,
+    datavisualization,
+    datavisualization.formats.functions
+}
+
+% PGFPlots configuration
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{
+    colormaps,
+    fillbetween,
+    statistics,
+    polar,
+    ternary,
+    dateplot,
+    patchplots
+}
+
+% Multi-language support setup
+\usepackage{CJKutf8}
+\usepackage{arabtex}
+\usepackage{utf8}
+
 % Page geometry
 \geometry{
     left=2.5cm,
@@ -40,7 +80,7 @@
 \fancyhead[LE,RO]{\thepage}
 \fancyhead[LO]{\rightmark}
 \fancyhead[RE]{\leftmark}
-\fancyfoot[C]{Advanced LaTeX Compilation Test}
+\fancyfoot[C]{Ultra-Advanced LaTeX Test}
 
 % Theorem environments
 \newtheorem{theorem}{Theorem}[section]
@@ -85,12 +125,12 @@
     linkcolor=blue,
     urlcolor=blue,
     citecolor=red,
-    pdftitle={Advanced LaTeX Test},
+    pdftitle={Ultra-Advanced LaTeX Test},
     pdfauthor={GitHub Actions Compiler}
 }
 
-\title{\textbf{Advanced LaTeX Feature Test}\\
-       \large Comprehensive Testing Document}
+\title{\textbf{Ultra-Advanced LaTeX Feature Test}\\
+       \large 3D Graphics, Multi-Language \& Complex Visualization}
 \author{GitHub Actions Automated Compiler}
 \date{\today}
 
@@ -99,339 +139,140 @@
 \maketitle
 
 \begin{abstract}
-This document serves as a comprehensive test for advanced LaTeX features in the GitHub Actions compilation workflow. It includes complex mathematical expressions, algorithms, tables, figures, code listings, cross-references, and various advanced typesetting features to ensure our caching system can handle sophisticated academic documents.
+This document pushes the boundaries of LaTeX compilation by incorporating advanced TikZ 3D graphics, complex mathematical plots, multi-language text rendering, and sophisticated data visualization. It serves as the ultimate stress test for our GitHub Actions workflow with cached TeX Live installation.
 \end{abstract}
 
 \tableofcontents
 \newpage
 
-\section{Mathematical Foundations}
+\section{Advanced 3D Graphics with TikZ}
 
-\subsection{Advanced Equations}
+\subsection{3D Coordinate Systems}
 
-Let's start with some complex mathematical expressions:
-
-\begin{theorem}[Fundamental Theorem of Calculus]
-Let $f$ be continuous on $[a,b]$ and differentiable on $(a,b)$. If $F(x) = \int_a^x f(t) \, dt$, then:
-\begin{equation}
-F'(x) = f(x) \quad \text{for all } x \in (a,b)
-\end{equation}
-\end{theorem}
-
-\begin{proof}
-By definition of the derivative:
-\begin{align}
-F'(x) &= \lim_{h \to 0} \frac{F(x+h) - F(x)}{h}\\
-&= \lim_{h \to 0} \frac{1}{h} \left( \int_a^{x+h} f(t) \, dt - \int_a^x f(t) \, dt \right)\\
-&= \lim_{h \to 0} \frac{1}{h} \int_x^{x+h} f(t) \, dt
-\end{align}
-
-By the Mean Value Theorem for integrals, there exists $c \in [x, x+h]$ such that:
-$\int_x^{x+h} f(t) \, dt = f(c) \cdot h$
-
-Therefore:
-$F'(x) = \lim_{h \to 0} \frac{f(c) \cdot h}{h} = \lim_{h \to 0} f(c) = f(x)$
-
-since $f$ is continuous and $c \to x$ as $h \to 0$.
-\end{proof}
-
-\subsection{Matrix Operations}
-
-Consider the following matrix equation:
-\begin{equation}
-\begin{pmatrix}
-a_{11} & a_{12} & \cdots & a_{1n} \\
-a_{21} & a_{22} & \cdots & a_{2n} \\
-\vdots & \vdots & \ddots & \vdots \\
-a_{m1} & a_{m2} & \cdots & a_{mn}
-\end{pmatrix}
-\begin{pmatrix}
-x_1 \\ x_2 \\ \vdots \\ x_n
-\end{pmatrix}
-=
-\begin{pmatrix}
-b_1 \\ b_2 \\ \vdots \\ b_m
-\end{pmatrix}
-\end{equation}
-
-The determinant of a $3 \times 3$ matrix is given by:
-\begin{equation}
-\det(A) = a_{11}(a_{22}a_{33} - a_{23}a_{32}) - a_{12}(a_{21}a_{33} - a_{23}a_{31}) + a_{13}(a_{21}a_{32} - a_{22}a_{31})
-\end{equation}
-
-\section{Algorithms and Code}
-
-\subsection{Pseudocode Algorithm}
-
-\begin{algorithm}[H]
-\caption{Quicksort Algorithm}
-\label{alg:quicksort}
-\begin{algorithmic}[1]
-\Procedure{QuickSort}{$A, p, r$}
-    \If{$p < r$}
-        \State $q \gets \textsc{Partition}(A, p, r)$
-        \State \textsc{QuickSort}$(A, p, q-1)$
-        \State \textsc{QuickSort}$(A, q+1, r)$
-    \EndIf
-\EndProcedure
-\State
-\Procedure{Partition}{$A, p, r$}
-    \State $x \gets A[r]$
-    \State $i \gets p - 1$
-    \For{$j \gets p$ \textbf{to} $r-1$}
-        \If{$A[j] \leq x$}
-            \State $i \gets i + 1$
-            \State \textsc{Exchange} $A[i]$ with $A[j]$
-        \EndIf
-    \EndFor
-    \State \textsc{Exchange} $A[i+1]$ with $A[r]$
-    \State \Return $i + 1$
-\EndProcedure
-\end{algorithmic}
-\end{algorithm}
-
-\subsection{Code Listings}
-
-Here's a Python implementation of the Fibonacci sequence:
-
-\begin{lstlisting}[language=Python, caption={Fibonacci Implementation}]
-def fibonacci_dynamic(n):
-    """
-    Calculate the nth Fibonacci number using dynamic programming.
-    Time complexity: O(n), Space complexity: O(n)
-    """
-    if n <= 1:
-        return n
-    
-    # Initialize memoization table
-    fib = [0] * (n + 1)
-    fib[0], fib[1] = 0, 1
-    
-    # Fill the table bottom-up
-    for i in range(2, n + 1):
-        fib[i] = fib[i-1] + fib[i-2]
-    
-    return fib[n]
-
-# Test the function
-def test_fibonacci():
-    test_cases = [0, 1, 5, 10, 20]
-    for n in test_cases:
-        result = fibonacci_dynamic(n)
-        print(f"F({n}) = {result}")
-
-if __name__ == "__main__":
-    test_fibonacci()
-\end{lstlisting}
-
-\section{Complex Tables}
-
-\subsection{Performance Comparison}
-
-\begin{table}[H]
+\begin{figure}[H]
 \centering
-\caption{Algorithm Performance Comparison}
-\label{tab:performance}
-\begin{tabular}{@{}lcccc@{}}
-\toprule
-\textbf{Algorithm} & \textbf{Best Case} & \textbf{Average Case} & \textbf{Worst Case} & \textbf{Space} \\
-\midrule
-Quicksort & $O(n \log n)$ & $O(n \log n)$ & $O(n^2)$ & $O(\log n)$ \\
-Mergesort & $O(n \log n)$ & $O(n \log n)$ & $O(n \log n)$ & $O(n)$ \\
-Heapsort & $O(n \log n)$ & $O(n \log n)$ & $O(n \log n)$ & $O(1)$ \\
-Insertion Sort & $O(n)$ & $O(n^2)$ & $O(n^2)$ & $O(1)$ \\
-Bubble Sort & $O(n)$ & $O(n^2)$ & $O(n^2)$ & $O(1)$ \\
-\bottomrule
-\end{tabular}
-\end{table}
+\tdplotsetmaincoords{70}{110}
+\begin{tikzpicture}[scale=3,tdplot_main_coords]
+    % Draw the main coordinate system
+    \draw[thick,->] (0,0,0) -- (1.5,0,0) node[anchor=north east]{$x$};
+    \draw[thick,->] (0,0,0) -- (0,1.5,0) node[anchor=north west]{$y$};
+    \draw[thick,->] (0,0,0) -- (0,0,1.5) node[anchor=south]{$z$};
+    
+    % Draw a 3D cube
+    \draw[blue,thick] (0,0,0) -- (1,0,0) -- (1,1,0) -- (0,1,0) -- cycle;
+    \draw[blue,thick] (0,0,1) -- (1,0,1) -- (1,1,1) -- (0,1,1) -- cycle;
+    \draw[blue,thick] (0,0,0) -- (0,0,1);
+    \draw[blue,thick] (1,0,0) -- (1,0,1);
+    \draw[blue,thick] (1,1,0) -- (1,1,1);
+    \draw[blue,thick] (0,1,0) -- (0,1,1);
+    
+    % Draw a 3D vector
+    \draw[red,very thick,->] (0,0,0) -- (0.8,0.6,0.9) node[above]{$\vec{v}$};
+    
+    % Draw some points
+    \fill[red] (0.8,0.6,0.9) circle (1pt);
+    \fill[green] (0.5,0.5,0.5) circle (1pt);
+    
+    % Add grid on xy-plane
+    \foreach \x in {0,0.25,0.5,0.75,1}
+        \foreach \y in {0,0.25,0.5,0.75,1}
+            \fill[gray,opacity=0.3] (\x,\y,0) circle (0.5pt);
+\end{tikzpicture}
+\caption{3D Coordinate System with Cube and Vector}
+\label{fig:3d-coords}
+\end{figure}
 
-\subsection{Multi-column Layout}
+\subsection{Complex 3D Surface}
 
-\begin{multicols}{2}
-\lipsum[1-2]
-\end{multicols}
-
-\section{Advanced Mathematical Concepts}
-
-\subsection{Series and Limits}
-
-The Taylor series expansion of $e^x$ around $x = 0$ is:
-\begin{equation}
-e^x = \sum_{n=0}^{\infty} \frac{x^n}{n!} = 1 + x + \frac{x^2}{2!} + \frac{x^3}{3!} + \cdots
-\end{equation}
-
-For complex analysis, Cauchy's integral formula states:
-\begin{equation}
-f(a) = \frac{1}{2\pi i} \oint_C \frac{f(z)}{z-a} dz
-\end{equation}
-
-where $C$ is a positively oriented simple closed contour and $a$ is in the interior of $C$.
-
-\subsection{Probability and Statistics}
-
-The probability density function of a normal distribution is:
-\begin{equation}
-f(x|\mu,\sigma^2) = \frac{1}{\sqrt{2\pi\sigma^2}} e^{-\frac{(x-\mu)^2}{2\sigma^2}}
-\end{equation}
-
-Bayes' theorem in its most general form:
-\begin{equation}
-P(H|E) = \frac{P(E|H) \cdot P(H)}{P(E)} = \frac{P(E|H) \cdot P(H)}{\sum_{i} P(E|H_i) \cdot P(H_i)}
-\end{equation}
-
-\section{Long Tables with Complex Structure}
-
-\begin{longtable}{|p{3cm}|p{2cm}|p{2cm}|p{2cm}|p{4cm}|}
-\caption{Extended Results Table} \label{tab:long-table} \\
-\hline
-\textbf{Method} & \textbf{Accuracy} & \textbf{Precision} & \textbf{Recall} & \textbf{Notes} \\
-\hline
-\endfirsthead
-
-\multicolumn{5}{c}%
-{{\bfseries \tablename\ \thetable{} -- continued from previous page}} \\
-\hline
-\textbf{Method} & \textbf{Accuracy} & \textbf{Precision} & \textbf{Recall} & \textbf{Notes} \\
-\hline
-\endhead
-
-\hline \multicolumn{5}{|r|}{{Continued on next page}} \\ \hline
-\endfoot
-
-\hline
-\endlastfoot
-
-Neural Network & 0.95 & 0.93 & 0.97 & Deep learning approach with 5 hidden layers \\
-\hline
-Random Forest & 0.89 & 0.91 & 0.87 & Ensemble method with 100 trees \\
-\hline
-SVM & 0.87 & 0.85 & 0.89 & Radial basis function kernel \\
-\hline
-Logistic Regression & 0.82 & 0.80 & 0.84 & L2 regularization applied \\
-\hline
-k-NN & 0.79 & 0.77 & 0.81 & k=5 with Euclidean distance \\
-\hline
-Decision Tree & 0.76 & 0.74 & 0.78 & Maximum depth of 10 \\
-\hline
-Naive Bayes & 0.73 & 0.71 & 0.75 & Gaussian assumption \\
-\hline
-Linear Regression & 0.68 & 0.66 & 0.70 & Ridge regression variant \\
-\hline
-\end{longtable}
-
-\section{Cross-References and Citations}
-
-As shown in Algorithm \ref{alg:quicksort}, quicksort has excellent average-case performance. The results in Table \ref{tab:performance} demonstrate the trade-offs between different sorting algorithms. The extended analysis in Table \ref{tab:long-table} provides additional empirical evidence.
-
-\section{Mathematical Theorems and Definitions}
-
-\begin{definition}[Metric Space]
-A metric space is an ordered pair $(M, d)$ where $M$ is a set and $d$ is a metric on $M$, i.e., a function:
-$d: M \times M \to \R$
-satisfying:
-\begin{enumerate}
-\item $d(x, y) \geq 0$ for all $x, y \in M$ (non-negativity)
-\item $d(x, y) = 0$ if and only if $x = y$ (identity of indiscernibles)
-\item $d(x, y) = d(y, x)$ for all $x, y \in M$ (symmetry)
-\item $d(x, z) \leq d(x, y) + d(y, z)$ for all $x, y, z \in M$ (triangle inequality)
-\end{enumerate}
-\end{definition}
-
-\begin{lemma}[Convergence in Metric Spaces]
-In a metric space $(M, d)$, a sequence $(x_n)$ converges to $x$ if and only if:
-$\lim_{n \to \infty} d(x_n, x) = 0$
-\end{lemma}
-
-\section{Advanced Formatting}
-
-\subsection{Special Characters and Symbols}
-
-Mathematical symbols: $\alpha, \beta, \gamma, \delta, \epsilon, \zeta, \eta, \theta, \iota, \kappa, \lambda, \mu, \nu, \xi, \pi, \rho, \sigma, \tau, \upsilon, \phi, \chi, \psi, \omega$
-
-Set notation: $\emptyset, \cup, \cap, \subset, \subseteq, \supset, \supseteq, \in, \notin, \setminus$
-
-Logic symbols: $\land, \lor, \neg, \Rightarrow, \Leftrightarrow, \exists, \forall$
-
-\subsection{Itemized Lists}
-
-Complex nested lists:
-\begin{enumerate}
-\item Machine Learning Algorithms
-    \begin{enumerate}[(a)]
-    \item Supervised Learning
-        \begin{itemize}
-        \item Classification
-            \begin{itemize}
-            \item Logistic Regression
-            \item Support Vector Machines
-            \item Random Forest
-            \end{itemize}
-        \item Regression
-            \begin{itemize}
-            \item Linear Regression
-            \item Polynomial Regression
-            \item Ridge/Lasso Regression
-            \end{itemize}
-        \end{itemize}
-    \item Unsupervised Learning
-        \begin{itemize}
-        \item Clustering (k-means, hierarchical)
-        \item Dimensionality Reduction (PCA, t-SNE)
-        \end{itemize}
-    \end{enumerate}
-\item Deep Learning
-    \begin{enumerate}[(a)]
-    \item Feedforward Networks
-    \item Convolutional Neural Networks
-    \item Recurrent Neural Networks
-    \end{enumerate}
-\end{enumerate}
-
-\section{Conclusion}
-
-This comprehensive document tests numerous LaTeX features including:
-\begin{itemize}
-\item Complex mathematical equations and theorems
-\item Advanced table layouts including long tables
-\item Algorithm pseudocode and syntax-highlighted code
-\item Cross-references and hyperlinks
-\item Multiple column layouts
-\item Advanced typography and formatting
-\item Theorem environments and proofs
-\item Lists and enumerations
-\item Special mathematical symbols and notation
-\end{itemize}
-
-If this document compiles successfully with our cached TeX Live installation, it demonstrates that our GitHub Actions workflow can handle sophisticated academic and technical documents with complex formatting requirements.
-
-The caching system provides significant performance benefits:
-\begin{itemize}
-\item First run: Full TeX Live installation (approximately 1.5 minutes)
-\item Subsequent runs: Cache restoration (approximately 10-15 seconds)
-\item Net time savings: Over 1 minute per compilation after the first run
-\end{itemize}
-
-This makes the workflow practical for regular use with complex documents containing hundreds of pages, advanced mathematics, algorithms, and sophisticated formatting.
-
-\appendix
-
-\section{Performance Metrics}
-
-\begin{table}[H]
+\begin{figure}[H]
 \centering
-\caption{Workflow Performance Analysis}
-\begin{tabular}{@{}lcc@{}}
-\toprule
-\textbf{Metric} & \textbf{First Run} & \textbf{Cached Run} \\
-\midrule
-TeX Live Installation & 90s & 0s (cached) \\
-Environment Setup & 10s & 5s \\
-LaTeX Compilation & 15s & 15s \\
-PDF Commit & 5s & 5s \\
-\textbf{Total Time} & \textbf{120s} & \textbf{25s} \\
-\textbf{Time Savings} & \textbf{-} & \textbf{95s (79\%)} \\
-\bottomrule
-\end{tabular}
-\end{table}
+\begin{tikzpicture}
+\begin{axis}[
+    view={60}{30},
+    width=12cm,
+    height=8cm,
+    xlabel=$x$,
+    ylabel=$y$,
+    zlabel=$z$,
+    title={3D Surface: $z = \sin(x) \cos(y) e^{-(x^2+y^2)/4}$},
+    colormap/cool,
+    shader=interp
+]
+\addplot3[
+    surf,
+    domain=-2:2,
+    domain y=-2:2,
+    samples=25,
+    samples y=25
+] {sin(deg(x)) * cos(deg(y)) * exp(-(x^2 + y^2)/4)};
+\end{axis}
+\end{tikzpicture}
+\caption{Complex 3D Mathematical Surface}
+\label{fig:3d-surface}
+\end{figure}
 
-\end{document}
+\section{Advanced Data Visualization}
+
+\subsection{Statistical Plots}
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.48\textwidth}
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=\textwidth,
+    height=6cm,
+    ybar,
+    xlabel={Categories},
+    ylabel={Frequency},
+    title={Histogram with Error Bars},
+    symbolic x coords={A,B,C,D,E},
+    xtick=data,
+    error bars/.cd,
+        y dir=both,
+        y explicit
+]
+\addplot+[error bars/.cd, y dir=both, y explicit] 
+coordinates {
+    (A,20) +- (0,2)
+    (B,35) +- (0,3)
+    (C,45) +- (0,4)
+    (D,28) +- (0,2)
+    (E,38) +- (0,3)
+};
+\end{axis}
+\end{tikzpicture}
+\caption{Bar Chart with Error Bars}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.48\textwidth}
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=\textwidth,
+    height=6cm,
+    xlabel={Time (s)},
+    ylabel={Signal Amplitude},
+    title={Multi-Signal Plot},
+    legend pos=north east,
+    grid=major
+]
+\addplot[blue, thick, smooth] table {
+    x y
+    0 0
+    1 0.841
+    2 0.909
+    3 0.141
+    4 -0.757
+    5 -0.959
+    6 -0.279
+    7 0.657
+    8 0.989
+    9 0.412
+    10 -0.544
+};
+\addlegendentry{$\sin(x)$}
+
+\addplot[red, thick, smooth] table {
+    x y
