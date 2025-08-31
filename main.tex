@@ -464,7 +464,110 @@ The quality of a linear regression model can be assessed by analyzing the residu
 \label{fig:residual_plot}
 \end{figure}
 
+\subsection{ResNet (2015)}
+\label{sec:resnet}
+The vanishing gradient problem occurs during the training of highly deep neural networks because the gradients of the initial few layers  are extremely low, if not negligible. Hence, the network is unable to learn significant representations from the deep levels. Also, hyperbolic or sigmoid tangent activation functions compress their outputs into a narrow range of values which lowers the amplitude of gradients conveyed downstream, making this problem more prevalent. ResNet \cite{resnet} addresses this problem by introducing residual connections that improve the transmission of gradients through the network, which is structured into residual blocks comprising convolutional and normalization layers.
 
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[node distance=2.5cm, auto]
+    % Define styles
+    \tikzstyle{block} = [rectangle, draw, fill=blue!20, 
+                        text width=1cm, text centered, rounded corners, minimum height=1cm]
+    \tikzstyle{sum} = [draw, fill=blue!20, circle, node distance=1.2cm, minimum size=0.6cm]
+    \tikzstyle{junction} = [draw, fill=black, circle, minimum size=0.1cm]
+    
+    % Input junction nodes
+    \node [junction,scale=0.5] (j0) {};
+    \node [block, right of=j0, node distance=1.2cm] (F1) {$F_1$};
+    \node [sum, right of=F1, node distance=1.2cm] (sum1) {$+$};
+    \node [right of=sum1, node distance=1.8cm] (dots1) {$\cdots$};
+    \node [junction, right of=dots1, node distance=1.5cm,scale=0.5] (j1) {};
+    \node [block, right of=j1, node distance=1.2cm] (Fk) {$F_k$};
+    \node [sum, right of=Fk, node distance=1.2cm] (sumk) {$+$};
+    \node [right of=sumk, node distance=1.8cm] (dots2) {$\cdots$};
+    \node [junction, right of=dots2, node distance=1.5cm,scale=0.5] (j2) {};
+    \node [block, right of=j2, node distance=1.2cm] (Fn) {$F_n$};
+    \node [sum, right of=Fn, node distance=1.2cm] (sumn) {$+$};
+    
+    % Input and output points
+    \coordinate [left of=j0, node distance=1.5cm] (input);
+    \coordinate [right of=sumn, node distance=1.5cm] (output);
+    
+    % Main flow connections
+    \draw [-] (input) -- node [above] {$x_0$} (j0);
+    \draw [->] (j0) -- (F1);
+    \draw [->] (F1) -- (sum1);
+    \draw [->] (sum1) -- node [above] {$x_1$} (dots1);
+    \draw [-] (dots1) -- (j1);
+    \draw [->] (j1) -- (Fk);
+    \draw [->] (Fk) -- (sumk);
+    \draw [->] (sumk) -- node [above] {$x_k$} (dots2);
+    \draw [-] (dots2) -- (j2);
+    \draw [->] (j2) -- (Fn);
+    \draw [->] (Fn) -- (sumn);
+    \draw [->] (sumn) -- node [above] {$x_n$} (output);
+    
+    % Skip connections - from junction points to sum nodes
+    % Skip connections - L-shaped paths
+% Skip connections with curves
+\draw [->] (j0) to [out=-90, in=-90] (sum1);
+\draw [->] (j1) to [out=-90, in=-90] (sumk);
+\draw [->] (j2) to [out=-90, in=-90] (sumn);
+    % Block labels
+    \node [below of=F1, node distance=1.8cm] {Block 1};
+    \node [below of=Fk, node distance=1.8cm] {Block $k$};
+    \node [below of=Fn, node distance=1.8cm] {Block $n$};
+\end{tikzpicture}
+
+\caption{ResNet Architecture with Skip Connections. Based on \cite{resnet}}
+\end{figure}
+
+For each ResNet block $k$, the forward pass is defined as:
+\begin{equation}
+x_{k+1} = x_k + F_k(x_k, W_k)
+\end{equation}
+
+where:
+\begin{itemize}
+    \item $x_k$ is the input to block $k$
+    \item $F_k(x_k, W_k)$ is the residual function (k Convolutional layers in our case)
+    \item $W_k$ are the weights of block $k$
+    \item The addition represents the skip connection (simplified case)
+\end{itemize}
+
+ We want to compute the gradient of the loss $L$ with respect to weights $W_k$ in the $k$-th residual block:
+
+\begin{equation}
+\frac{\partial L}{\partial W_k} = \frac{\partial L}{\partial x_n} \cdot \frac{\partial x_n}{\partial x_{n-1}} \cdot \frac{\partial x_{n-1}}{\partial x_{n-2}} \cdots \frac{\partial x_{k+1}}{\partial x_k} \cdot \frac{\partial x_k}{\partial W_k}
+\end{equation}
+
+
+Taking the derivative of equation (2.5) with respect to $x_k$:
+\begin{equation}
+\frac{\partial x_{k+1}}{\partial x_k} = \frac{\partial}{\partial x_k}[x_k + F_k(x_k, W_k)] = 1 + \frac{\partial F_k(x_k, W_k)}{\partial x_k}
+\end{equation}
+
+Substituting equation (3) into equation (2):
+\begin{align}
+\frac{\partial L}{\partial W_k} &= \frac{\partial L}{\partial x_n} \cdot \prod_{i=k}^{n-1} \left(1 + \frac{\partial F_i}{\partial x_i}\right) \cdot \frac{\partial x_k}{\partial W_k}
+\end{align}
+
+When we expand the product using the distributive property:
+\begin{align}
+\prod_{i=k}^{n-1} \left(1 + \frac{\partial F_i}{\partial x_i}\right) 
+&= 1 + \sum_{i=k}^{n-1} \frac{\partial F_i}{\partial x_i} + \epsilon
+\end{align}
+
+where $\epsilon$ represents all higher-order cross terms involving products of residual gradients.
+
+\begin{equation}
+\frac{\partial L}{\partial W_k} = \frac{\partial L}{\partial x_n} \cdot \frac{\partial x_k}{\partial W_k} \cdot 1 + \frac{\partial L}{\partial x_n} \cdot \frac{\partial x_k}{\partial W_k} \cdot \epsilon
+\end{equation}
+
+Notice that the direct Path $\frac{\partial L}{\partial x_n} \cdot \frac{\partial x_k}{\partial W_k} \cdot 1$ provides a direct gradient path from the output to any layer with no multiplicative decay. Even if all residual gradients $\frac{\partial F_i}{\partial x_i} \to 0$, we still have
+$\frac{\partial L}{\partial W_k} = \frac{\partial L}{\partial x_n} \cdot \frac{\partial x_k}{\partial W_k}$ preserving its magnitude.
 \section{Conclusion}
 
 This comprehensive document tests numerous LaTeX features including:
