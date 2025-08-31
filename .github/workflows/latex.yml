@@ -37,7 +37,8 @@ jobs:
         # Download installer
         wget -q http://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz
         tar -xzf install-tl-unx.tar.gz
-        cd install-tl-*
+        INSTALL_DIR=$(find . -name "install-tl-2*" -type d | head -1)
+        cd "$INSTALL_DIR"
         
         # Create installation profile
         cat > texlive.profile << 'EOF'
