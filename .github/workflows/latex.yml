@@ -133,6 +133,7 @@ jobs:
           ["bidi"]="bidi"
           ["graphics"]="graphics"
           ["graphicx"]="graphics"
+          ["arabtex"]="arabtex"
         )
         
         MISSING_PACKAGES=()
