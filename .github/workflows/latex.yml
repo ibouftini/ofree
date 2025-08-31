@@ -124,6 +124,7 @@ jobs:
           ["enumerate"]="tools"
           ["tikz"]="pgf"
           ["pgfplots"]="pgfplots"
+          ["tikz-3dplot"]="tikz-3dplot"
           ["babel"]="babel"
           ["fontspec"]="fontspec"
           ["polyglossia"]="polyglossia"
@@ -133,6 +134,8 @@ jobs:
           ["arabtex"]="arabtex"
           ["graphics"]="graphics"
           ["graphicx"]="graphics"
+          ["CJKutf8"]="cjk"
+          ["utf8"]="base"
         )
         
         MISSING_PACKAGES=()
