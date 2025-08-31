@@ -96,6 +96,55 @@ jobs:
           echo "Fresh TeX Live installation completed!"
         fi
     
+    - name: Verify and install missing packages
+      run: |
+        export PATH="$HOME/texlive/2023/bin/x86_64-linux:$PATH"
+        
+        echo "Checking for required packages..."
+        
+        # List of required packages for our complex document
+        REQUIRED_PACKAGES=(
+          "mathtools"
+          "booktabs" 
+          "array"
+          "longtable"
+          "multirow"
+          "fancyhdr"
+          "hyperref"
+          "xcolor"
+          "listings"
+          "algorithm"
+          "algorithmicx"
+          "algpseudocode"
+          "subcaption"
+          "float"
+          "wrapfig"
+          "lipsum"
+          "multicol"
+          "enumerate"
+        )
+        
+        MISSING_PACKAGES=()
+        
+        # Check each package
+        for package in "${REQUIRED_PACKAGES[@]}"; do
+          if ! kpsewhich ${package}.sty >/dev/null 2>&1; then
+            echo "Missing package: $package"
+            MISSING_PACKAGES+=("$package")
+          else
+            echo "Found package: $package"
+          fi
+        done
+        
+        # Install missing packages if any
+        if [ ${#MISSING_PACKAGES[@]} -gt 0 ]; then
+          echo "Installing ${#MISSING_PACKAGES[@]} missing packages..."
+          ~/texlive/2023/bin/x86_64-linux/tlmgr install "${MISSING_PACKAGES[@]}"
+          echo "Missing packages installed successfully!"
+        else
+          echo "All required packages are already installed!"
+        fi
+    
     - name: Compile LaTeX
       run: |
         export PATH="$HOME/texlive/2023/bin/x86_64-linux:$PATH"
