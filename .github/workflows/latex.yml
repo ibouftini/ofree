@@ -10,120 +10,58 @@ jobs:
     runs-on: ubuntu-latest
     
     permissions:
-      contents: write  # Required to push PDF back to repo
+      contents: write
     
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Cache TeX Live
       id: cache
       uses: actions/cache@v4
       with:
         path: /usr/local/texlive
-        key: texlive-2023-v1
+        key: texlive-simple-v1
     
     - name: Install TeX Live
       if: steps.cache.outputs.cache-hit != 'true'
       run: |
-        echo "Installing TeX Live (first time)..."
+        echo "Installing TeX Live..."
         
-        # Create temp directory
-        mkdir -p /tmp/texlive-install
-        cd /tmp/texlive-install
-        
-        # Download installer
-        wget -q http://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz
-        tar -xzf install-tl-unx.tar.gz
-        INSTALL_DIR=$(find . -name "install-tl-2*" -type d | head -1)
-        cd "$INSTALL_DIR"
-        
-        # Create installation profile
-        cat > texlive.profile << 'EOF'
-        selected_scheme scheme-medium
-        TEXDIR /usr/local/texlive/2023
-        TEXMFCONFIG ~/.texlive2023/texmf-config
-        TEXMFHOME ~/texmf
-        TEXMFLOCAL /usr/local/texlive/texmf-local
-        TEXMFSYSCONFIG /usr/local/texlive/2023/texmf-config
-        TEXMFSYSVAR /usr/local/texlive/2023/texmf-var
-        TEXMFVAR ~/.texlive2023/texmf-var
-        option_adjustrepo 1
-        option_autobackup 1
-        option_desktop_integration 0
-        option_doc 0
-        option_file_assocs 1
-        option_fmt 1
-        option_letter 0
-        option_menu_integration 0
-        option_path 1
-        option_post_code 1
-        option_src 0
-        option_sys_bin /usr/local/bin
-        option_sys_info /usr/local/share/info
-        option_sys_man /usr/local/share/man
-        option_w32_multi_user 1
-        EOF
-        
-        # Install TeX Live
-        sudo ./install-tl -profile texlive.profile
+        # Use apt to install basic TeX Live (much simpler)
+        sudo apt-get update
+        sudo apt-get install -y texlive-latex-extra texlive-fonts-recommended texlive-science
         
         echo "TeX Live installation completed!"
     
-    - name: Setup TeX Live PATH
-      run: |
-        echo "/usr/local/texlive/2023/bin/x86_64-linux" >> $GITHUB_PATH
-        export PATH="/usr/local/texlive/2023/bin/x86_64-linux:$PATH"
-        
-        # Verify installation
-        which pdflatex
-        pdflatex --version
-    
     - name: Compile LaTeX
       run: |
-        export PATH="/usr/local/texlive/2023/bin/x86_64-linux:$PATH"
-        
         # Check if main.tex exists
         if [ ! -f "main.tex" ]; then
-          echo "Error: main.tex not found in repository!"
+          echo "Error: main.tex not found!"
           exit 1
         fi
         
         echo "Compiling main.tex..."
         
-        # First compilation
+        # Compile (run twice for references)
         pdflatex -interaction=nonstopmode main.tex
-        
-        # Check if .bib files exist and run bibtex if needed
-        if ls *.bib 1> /dev/null 2>&1; then
-          echo "Bibliography files found, running bibtex..."
-          bibtex main
-          pdflatex -interaction=nonstopmode main.tex
-        fi
-        
-        # Final compilation for references
         pdflatex -interaction=nonstopmode main.tex
         
         echo "Compilation completed!"
         ls -la main.pdf
     
-    - name: Commit and push PDF
+    - name: Commit PDF
       run: |
-        # Configure git
         git config --local user.email "action@github.com"
         git config --local user.name "LaTeX Compiler"
         
-        # Add the PDF file
         git add main.pdf
         
-        # Check if there are changes to commit
-        if git diff --staged --quiet; then
-          echo "No changes to PDF file"
-        else
-          # Commit and push
+        if ! git diff --staged --quiet; then
           git commit -m "Auto-compile LaTeX: $(date '+%Y-%m-%d %H:%M:%S')"
           git push
-          echo "PDF committed and pushed successfully!"
+          echo "PDF committed successfully!"
+        else
+          echo "No changes to commit"
         fi
