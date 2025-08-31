@@ -1,1 +1,91 @@
+name: Cache Test Workflow
 
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test-cache:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Create test directory
+      run: |
+        mkdir -p test-cache-dir
+        echo "This is a test file created at $(date)" > test-cache-dir/test-file.txt
+        echo "Another file with random data: $RANDOM" > test-cache-dir/random-data.txt
+        ls -la test-cache-dir/
+    
+    # Try to restore cache first
+    - name: Restore cache
+      id: cache-restore
+      uses: actions/cache/restore@v4
+      with:
+        path: |
+          test-cache-dir/
+          ~/.cache/test-data
+        key: test-cache-${{ runner.os }}-${{ hashFiles('**/package.json', '**/*.txt') }}
+        restore-keys: |
+          test-cache-${{ runner.os }}-
+          test-cache-
+    
+    - name: Check if cache was restored
+      run: |
+        echo "Cache hit: ${{ steps.cache-restore.outputs.cache-hit }}"
+        if [ "${{ steps.cache-restore.outputs.cache-hit }}" = "true" ]; then
+          echo "✅ Cache was restored successfully!"
+          echo "Contents of cached directory:"
+          ls -la test-cache-dir/ || echo "Directory doesn't exist"
+          cat test-cache-dir/test-file.txt || echo "File doesn't exist"
+        else
+          echo "❌ Cache miss - creating new data"
+        fi
+    
+    - name: Create additional data (simulating installation)
+      run: |
+        mkdir -p ~/.cache/test-data
+        echo "Simulating package installation..." 
+        echo "Package data created at $(date)" > ~/.cache/test-data/package-info.txt
+        echo "Version: 1.0.0" > ~/.cache/test-data/version.txt
+        
+        # Add more files to test directory
+        echo "Additional file after cache check" > test-cache-dir/post-cache-file.txt
+        
+        echo "Current directory contents:"
+        find test-cache-dir/ -type f -exec echo "File: {}" \; -exec cat {} \;
+    
+    - name: Save cache
+      id: cache-save  
+      uses: actions/cache/save@v4
+      if: steps.cache-restore.outputs.cache-hit != 'true'
+      with:
+        path: |
+          test-cache-dir/
+          ~/.cache/test-data
+        key: ${{ steps.cache-restore.outputs.cache-primary-key }}
+    
+    - name: Verify cache save
+      run: |
+        echo "Cache save result: ${{ steps.cache-save.outcome }}"
+        echo "All files that should be cached:"
+        find test-cache-dir/ ~/.cache/test-data -type f 2>/dev/null || echo "Some paths don't exist"
+    
+    - name: Test file permissions
+      run: |
+        echo "Testing file permissions:"
+        ls -la test-cache-dir/
+        ls -la ~/.cache/test-data/
+        
+        echo "Current user: $(whoami)"
+        echo "Current groups: $(groups)"
+        
+        # Test if we can read the files
+        echo "Testing read access:"
+        cat test-cache-dir/test-file.txt
+        cat ~/.cache/test-data/package-info.txt
