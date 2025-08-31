@@ -1,183 +1,33 @@
-name: Production Cache Test
+name: Simple Cache Test
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
   workflow_dispatch:
 
 jobs:
-  cache-test:
+  test:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
     
-    - name: Cache heavy installation
+    - name: Cache test data
       id: cache
       uses: actions/cache@v4
       with:
-        path: |
-          ~/production-cache
-          /tmp/production-install
-        key: production-v1-${{ runner.os }}
+        path: ~/cache-test
+        key: simple-test-v1
     
-    - name: "🔍 Cache Status Check"
-      run: |
-        echo "===================="
-        echo "CACHE STATUS CHECK"
-        echo "===================="
-        echo "Cache hit: ${{ steps.cache.outputs.cache-hit }}"
-        echo "Cache key: production-v1-${{ runner.os }}"
-        echo "Runner OS: ${{ runner.os }}"
-        echo "Timestamp: $(date)"
-        
-        if [ "${{ steps.cache.outputs.cache-hit }}" = "true" ]; then
-          echo "✅ CACHE HIT - Using cached installation"
-          echo "Cached files found:"
-          ls -la ~/production-cache/ 2>/dev/null || echo "No ~/production-cache found"
-          ls -la /tmp/production-install/ 2>/dev/null || echo "No /tmp/production-install found"
-        else
-          echo "❌ CACHE MISS - Will perform fresh installation"
-        fi
-    
-    # INSTALLATION STEP - Only runs on cache miss
-    - name: "🚀 Heavy Installation (Simulated)"
+    - name: Install if no cache
       if: steps.cache.outputs.cache-hit != 'true'
       run: |
-        echo "========================================="
-        echo "PERFORMING HEAVY INSTALLATION"
-        echo "========================================="
-        echo "⏳ This would normally take 5-10 minutes..."
-        
-        # Simulate downloading and installing heavy software
-        mkdir -p ~/production-cache/bin
-        mkdir -p ~/production-cache/lib
-        mkdir -p ~/production-cache/config
-        mkdir -p /tmp/production-install
-        
-        echo "📥 Downloading packages..."
-        sleep 2
-        
-        # Create fake binaries and libraries
-        echo '#!/bin/bash\necho "Production Tool v1.0"' > ~/production-cache/bin/production-tool
-        chmod +x ~/production-cache/bin/production-tool
-        
-        echo "library_data_v1.0" > ~/production-cache/lib/libproduction.so
-        echo "config_setting=enabled\nversion=1.0.0" > ~/production-cache/config/settings.conf
-        
-        # Create installation metadata
-        echo "installed_at=$(date)" > /tmp/production-install/install-info.txt
-        echo "installation_size=250MB" >> /tmp/production-install/install-info.txt
-        echo "packages=tool,lib,config" >> /tmp/production-install/install-info.txt
-        
-        echo "✅ Installation completed successfully!"
-        echo "📊 Installation summary:"
-        echo "  - Binaries: $(ls ~/production-cache/bin/ | wc -l)"
-        echo "  - Libraries: $(ls ~/production-cache/lib/ | wc -l)" 
-        echo "  - Config files: $(ls ~/production-cache/config/ | wc -l)"
-        echo "  - Total size: $(du -sh ~/production-cache | cut -f1)"
+        echo "No cache - installing..."
+        mkdir -p ~/cache-test
+        echo "installed at $(date)" > ~/cache-test/install.txt
+        echo "Done installing"
     
-    # SETUP STEP - Runs always (both cache hit and miss)
-    - name: "⚙️ Setup Environment"
+    - name: Use cached data
       run: |
-        echo "=============================="
-        echo "SETTING UP ENVIRONMENT"
-        echo "=============================="
-        
-        # Add to PATH
-        echo "$HOME/production-cache/bin" >> $GITHUB_PATH
-        export PATH="$HOME/production-cache/bin:$PATH"
-        
-        # Verify installation
-        if [ -f "$HOME/production-cache/bin/production-tool" ]; then
-          echo "✅ Production tool found and ready"
-          ~/production-cache/bin/production-tool
-        else
-          echo "❌ Production tool not found!"
-          exit 1
-        fi
-        
-        # Show configuration
-        if [ -f "$HOME/production-cache/config/settings.conf" ]; then
-          echo "📋 Configuration loaded:"
-          cat ~/production-cache/config/settings.conf
-        fi
-        
-        # Show installation info if available
-        if [ -f "/tmp/production-install/install-info.txt" ]; then
-          echo "ℹ️ Installation details:"
-          cat /tmp/production-install/install-info.txt
-        fi
-    
-    # USAGE STEP - Demonstrates using the cached/installed tools
-    - name: "🛠️ Use Production Tools"
-      run: |
-        echo "=============================="
-        echo "USING PRODUCTION TOOLS"
-        echo "=============================="
-        
-        export PATH="$HOME/production-cache/bin:$PATH"
-        
-        # Run the tool
-        echo "Running production tool:"
-        production-tool
-        
-        # Show all available tools
-        echo "Available tools:"
-        ls -la ~/production-cache/bin/
-        
-        # Show libraries
-        echo "Available libraries:"
-        ls -la ~/production-cache/lib/
-        
-        # Process some work (simulated)
-        echo "🔄 Processing work with cached tools..."
-        echo "Work completed at $(date)" > work-output.txt
-        echo "Used cached installation: ${{ steps.cache.outputs.cache-hit }}" >> work-output.txt
-        
-        echo "✅ Work completed successfully!"
-        cat work-output.txt
-    
-    # VERIFICATION STEP - Final checks
-    - name: "✅ Final Verification"
-      run: |
-        echo "=============================="
-        echo "FINAL VERIFICATION"
-        echo "=============================="
-        
-        # Check if cache worked properly
-        if [ "${{ steps.cache.outputs.cache-hit }}" = "true" ]; then
-          echo "🚀 SUCCESS: Cache was used - fast execution!"
-          echo "⏱️ This run should have been much faster"
-        else
-          echo "🔄 First run: Installation completed and cached"
-          echo "⏱️ Next run will be much faster using cache"
-        fi
-        
-        # Show final state
-        echo "📊 Final installation state:"
-        echo "  - Cache directory: $(du -sh ~/production-cache 2>/dev/null || echo '0')"
-        echo "  - Install directory: $(du -sh /tmp/production-install 2>/dev/null || echo '0')"
-        echo "  - Total files cached: $(find ~/production-cache /tmp/production-install -type f 2>/dev/null | wc -l)"
-        
-        # Create summary
-        echo "CACHE TEST SUMMARY" > cache-test-summary.txt
-        echo "=================" >> cache-test-summary.txt
-        echo "Cache hit: ${{ steps.cache.outputs.cache-hit }}" >> cache-test-summary.txt
-        echo "Run time: $(date)" >> cache-test-summary.txt
-        echo "Status: SUCCESS ✅" >> cache-test-summary.txt
-        
-        cat cache-test-summary.txt
-    
-    # Upload artifacts for verification
-    - name: "📤 Upload Test Results"
-      uses: actions/upload-artifact@v4
-      with:
-        name: cache-test-results
-        path: |
-          work-output.txt
-          cache-test-summary.txt
-        retention-days: 7
+        echo "Cache hit: ${{ steps.cache.outputs.cache-hit }}"
+        ls -la ~/cache-test/
+        cat ~/cache-test/install.txt
