@@ -25,6 +25,43 @@
 \usepackage{wrapfig}
 \usepackage{lipsum}
 
+% Advanced graphics and plotting
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{tikz-3dplot}
+
+
+% TikZ libraries
+\usetikzlibrary{
+    3d,
+    arrows,
+    arrows.meta,
+    calc,
+    decorations.markings,
+    decorations.pathreplacing,
+    matrix,
+    patterns,
+    positioning,
+    shapes,
+    shapes.geometric,
+    shapes.misc,
+    datavisualization,
+    datavisualization.formats.functions
+}
+
+% PGFPlots configuration
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{
+    colormaps,
+    fillbetween,
+    statistics,
+    polar,
+    ternary,
+    dateplot,
+    patchplots
+}
+
+
 % Page geometry
 \geometry{
     left=2.5cm,
