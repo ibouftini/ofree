@@ -122,6 +122,17 @@ jobs:
           ["lipsum"]="lipsum"
           ["multicol"]="tools"
           ["enumerate"]="tools"
+          ["tikz"]="pgf"
+          ["pgfplots"]="pgfplots"
+          ["babel"]="babel"
+          ["fontspec"]="fontspec"
+          ["polyglossia"]="polyglossia"
+          ["bidi"]="bidi"
+          ["xeCJK"]="xecjk"
+          ["ctex"]="ctex"
+          ["arabtex"]="arabtex"
+          ["graphics"]="graphics"
+          ["graphicx"]="graphics"
         )
         
         MISSING_PACKAGES=()
