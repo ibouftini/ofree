@@ -102,27 +102,194 @@ jobs:
         
         echo "Checking for required packages..."
         
-        # List of required packages with correct repository names
+        # Comprehensive package map for mathematics, graphics, 3D, and more
         declare -A PACKAGE_MAP=(
+          # Basic document structure
+          ["geometry"]="geometry"
+          ["setspace"]="setspace"
+          ["fancyhdr"]="fancyhdr"
+          ["titling"]="titling"
+          ["abstract"]="abstract"
+          ["appendix"]="appendix"
+          ["footmisc"]="footmisc"
+          ["parskip"]="parskip"
+          
+          # Mathematics packages
           ["mathtools"]="mathtools"
-          ["booktabs"]="booktabs" 
+          ["amsmath"]="amsmath"
+          ["amssymb"]="amsfonts"
+          ["amsfonts"]="amsfonts"
+          ["amsthm"]="amsthm"
+          ["bm"]="bm"
+          ["cancel"]="cancel"
+          ["cases"]="cases"
+          ["commath"]="commath"
+          ["empheq"]="empheq"
+          ["esint"]="esint"
+          ["extarrows"]="extarrows"
+          ["gensymb"]="gensymb"
+          ["icomma"]="icomma"
+          ["mathrsfs"]="mathrsfs"
+          ["mathtools"]="mathtools"
+          ["nccmath"]="nccmath"
+          ["physics"]="physics"
+          ["siunitx"]="siunitx"
+          ["systeme"]="systeme"
+          ["thmtools"]="thmtools"
+          ["xfrac"]="xfrac"
+          
+          # Tables and arrays
           ["array"]="tools"
+          ["booktabs"]="booktabs"
           ["longtable"]="tools"
           ["multirow"]="multirow"
-          ["fancyhdr"]="fancyhdr"
-          ["hyperref"]="hyperref"
+          ["multicol"]="tools"
+          ["tabu"]="tabu"
+          ["tabularx"]="tools"
+          ["tabulary"]="tools"
+          ["threeparttable"]="threeparttable"
+          ["xltabular"]="xltabular"
+          
+          # Graphics and colors
+          ["graphicx"]="graphics"
           ["xcolor"]="xcolor"
-          ["listings"]="listings"
-          ["algorithm"]="algorithms"
-          ["algorithmicx"]="algorithmicx"
-          ["algpseudocode"]="algorithmicx"
+          ["color"]="graphics"
+          ["colortbl"]="colortbl"
+          ["tikz"]="pgf"
+          ["pgf"]="pgf"
+          ["pgfplots"]="pgfplots"
+          ["pstricks"]="pstricks"
+          ["pst-node"]="pst-node"
+          ["pst-plot"]="pst-plot"
+          ["pst-3dplot"]="pst-3dplot"
+          ["pst-solides3d"]="pst-solides3d"
+          ["adjustbox"]="adjustbox"
+          ["caption"]="caption"
           ["subcaption"]="caption"
           ["float"]="float"
           ["wrapfig"]="wrapfig"
-          ["lipsum"]="lipsum"
-          ["multicol"]="tools"
+          ["rotating"]="rotating"
+          ["sidecap"]="sidecap"
+          ["transparent"]="transparent"
+          
+          # 3D and technical drawing
+          ["asymptote"]="asymptote"
+          ["tikz-3dplot"]="tikz-3dplot"
+          ["tkz-euclide"]="tkz-euclide"
+          ["tkz-graph"]="tkz-graph"
+          ["circuitikz"]="circuitikz"
+          ["forest"]="forest"
+          
+          # Algorithms and code listings
+          ["algorithm"]="algorithms"
+          ["algorithmic"]="algorithms"
+          ["algorithmicx"]="algorithmicx"
+          ["algpseudocode"]="algorithmicx"
+          ["listings"]="listings"
+          ["minted"]="minted"
+          ["python"]="python"
+          ["matlab-prettifier"]="matlab-prettifier"
+          
+          # References and citations
+          ["hyperref"]="hyperref"
+          ["url"]="url"
+          ["breakurl"]="breakurl"
+          ["natbib"]="natbib"
+          ["biblatex"]="biblatex"
+          ["csquotes"]="csquotes"
+          ["cleveref"]="cleveref"
+          ["varioref"]="varioref"
+          ["fancyref"]="fancyref"
+          
+          # Fonts and text formatting
+          ["fontenc"]="fonts-tlwg"
+          ["inputenc"]="inputenc"
+          ["fontspec"]="fontspec"
+          ["unicode-math"]="unicode-math"
+          ["mathdesign"]="mathdesign"
+          ["mathpazo"]="mathpazo"
+          ["mathptmx"]="mathptmx"
+          ["newtx"]="newtx"
+          ["newpx"]="newpx"
+          ["libertine"]="libertine"
+          ["inconsolata"]="inconsolata"
+          ["fourier"]="fourier"
+          ["arev"]="arev"
+          ["cmbright"]="cmbright"
+          ["concmath"]="concmath"
+          ["eulervm"]="eulervm"
+          ["kpfonts"]="kpfonts"
+          ["lmodern"]="lmodern"
+          ["palatino"]="palatino"
+          ["times"]="psnfss"
+          ["helvet"]="psnfss"
+          ["courier"]="psnfss"
+          ["charter"]="charter"
+          ["mathalpha"]="mathalpha"
+          
+          # Internationalization and languages
+          ["babel"]="babel"
+          ["polyglossia"]="polyglossia"
+          ["csquotes"]="csquotes"
+          ["hyphenat"]="hyphenat"
+          
+          # Utilities and miscellaneous
+          ["enumitem"]="enumitem"
           ["enumerate"]="tools"
-          ["tikz"]="tikz"
+          ["etoolbox"]="etoolbox"
+          ["ifthen"]="ifthen"
+          ["keyval"]="keyval"
+          ["lastpage"]="lastpage"
+          ["lipsum"]="lipsum"
+          ["microtype"]="microtype"
+          ["paralist"]="paralist"
+          ["pdfpages"]="pdfpages"
+          ["soul"]="soul"
+          ["tocbibind"]="tocbibind"
+          ["tocloft"]="tocloft"
+          ["todo"]="todo"
+          ["ulem"]="ulem"
+          ["xspace"]="xspace"
+          ["zref"]="zref"
+          
+          # Advanced mathematics and specialized packages
+          ["breqn"]="breqn"
+          ["mathdots"]="mathdots"
+          ["steinmetz"]="steinmetz"
+          ["trfsigns"]="trfsigns"
+          ["witharrows"]="witharrows"
+          ["young"]="young"
+          ["youngtab"]="youngtab"
+          
+          # Statistics and data analysis
+          ["pgfplotstable"]="pgfplotstable"
+          ["siunitx"]="siunitx"
+          ["datatool"]="datatool"
+          ["spreadtab"]="spreadtab"
+          
+          # Chemistry and physics
+          ["chemmacros"]="chemmacros"
+          ["mhchem"]="mhchem"
+          ["chemfig"]="chemfig"
+          ["chemformula"]="chemformula"
+          ["chemscheme"]="chemscheme"
+          
+          # Linguistics
+          ["gb4e"]="gb4e"
+          ["cgloss4e"]="cgloss4e"
+          ["qtree"]="qtree"
+          ["forest"]="forest"
+          ["expex"]="expex"
+          
+          # Music notation
+          ["musixtex"]="musixtex"
+          ["pmx"]="pmx"
+          
+          # Chess and games
+          ["skak"]="skak"
+          ["xskak"]="xskak"
+          ["chessboard"]="chessboard"
+          ["chessfss"]="chessfss"
         )
         
         MISSING_PACKAGES=()
@@ -144,14 +311,18 @@ jobs:
         if [ ${#MISSING_PACKAGES[@]} -gt 0 ]; then
           echo "Installing missing packages: ${MISSING_PACKAGES[*]}"
           ~/texlive/2023/bin/x86_64-linux/tlmgr install "${MISSING_PACKAGES[@]}" || {
-            echo "Some packages failed to install, but continuing..."
-            exit 0
-          }
+                echo "Some packages failed to install, but continuing..."
+                # Try installing packages one by one to avoid complete failure
+                for pkg in "${MISSING_PACKAGES[@]}"; do
+                    echo "Attempting to install: $pkg"
+                    ~/texlive/2023/bin/x86_64-linux/tlmgr install "$pkg" || echo "Failed to install $pkg"
+                done
+            }
           echo "Package installation completed!"
         else
           echo "All required packages are already installed!"
         fi
-    
+        
     - name: Compile LaTeX
       run: |
         export PATH="$HOME/texlive/2023/bin/x86_64-linux:$PATH"
