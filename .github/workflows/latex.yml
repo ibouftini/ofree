@@ -1,9 +1,18 @@
-name: LaTeX Compiler (Optimized)
+name: LaTeX Compiler (Optimized with Package Map)
 
 on:
   push:
     paths: ['**.tex', '**.bib', '**.cls', '**.sty', '**.yml', '**.yaml', 'package-map.json']
   workflow_dispatch:
+    inputs:
+      debug_mode:
+        description: 'Enable debug mode'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
 
 jobs:
   compile:
@@ -16,61 +25,138 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
     
-    # Step 1: Analyze LaTeX files to determine required packages
+    # Step 1: Validate package-map.json exists
+    - name: Validate Package Map
+      run: |
+        if [ ! -f "package-map.json" ]; then
+          echo "⚠️ Warning: package-map.json not found in root directory"
+          echo "Creating default package-map.json..."
+          cat > package-map.json << 'EOF'
+        {
+          "amsmath": "amsmath",
+          "amssymb": "amsfonts",
+          "amsthm": "amscls",
+          "mathtools": "mathtools",
+          "bm": "tools",
+          "geometry": "geometry",
+          "graphicx": "graphics",
+          "xcolor": "xcolor",
+          "tikz": "pgf",
+          "pgfplots": "pgfplots",
+          "booktabs": "booktabs",
+          "multirow": "multirow",
+          "array": "tools",
+          "longtable": "tools",
+          "algorithm": "algorithms",
+          "algorithmicx": "algorithmicx",
+          "algpseudocode": "algorithmicx",
+          "listings": "listings",
+          "hyperref": "hyperref",
+          "enumerate": "tools",
+          "enumitem": "enumitem",
+          "subcaption": "caption",
+          "float": "float",
+          "wrapfig": "wrapfig",
+          "babel": "babel",
+          "inputenc": "latex",
+          "fontenc": "latex",
+          "url": "url",
+          "fancyhdr": "fancyhdr",
+          "lipsum": "lipsum",
+          "multicol": "tools"
+        }
+        EOF
+          echo "Default package-map.json created"
+        else
+          echo "✅ package-map.json found"
+          if [ "${{ github.event.inputs.debug_mode }}" == "true" ]; then
+            echo "Package mappings:"
+            cat package-map.json | python3 -m json.tool
+          fi
+        fi
+    
+    # Step 2: Analyze LaTeX dependencies
     - name: Analyze LaTeX Dependencies
       id: analyze
       run: |
-        echo "Analyzing LaTeX package requirements..."
+        echo "🔍 Analyzing LaTeX package requirements..."
         
-        # Extract all \usepackage commands from all .tex files
-        PACKAGES=$(find . -name "*.tex" -type f -exec grep -h '\\usepackage\(\[[^]]*\]\)\?{[^}]*}' {} \; | \
+        # Find all .tex files and extract \usepackage commands
+        echo "Scanning .tex files:"
+        find . -name "*.tex" -type f | while read -r file; do
+          echo "  - $file"
+        done
+        
+        # Extract packages with better regex handling
+        PACKAGES=$(find . -name "*.tex" -type f -exec cat {} \; | \
+                   grep -o '\\usepackage\(\[[^]]*\]\)\?{[^}]*}' | \
                    sed 's/.*\\usepackage\(\[[^]]*\]\)\?{\([^}]*\)}.*/\2/' | \
                    tr ',' '\n' | \
                    sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | \
+                   grep -v '^$' | \
                    sort -u | \
                    tr '\n' ' ')
         
-        echo "Found packages: $PACKAGES"
+        if [ -z "$PACKAGES" ]; then
+          echo "⚠️ No packages found in .tex files"
+          PACKAGES="amsmath graphicx"  # Default minimal packages
+        fi
+        
+        echo "📦 Found packages: $PACKAGES"
         echo "latex_packages=$PACKAGES" >> $GITHUB_OUTPUT
         
-        # Generate a fingerprint for caching
+        # Generate fingerprint for caching
         FINGERPRINT=$(echo "$PACKAGES" | sha256sum | cut -d' ' -f1)
-        echo "Package fingerprint: $FINGERPRINT"
+        echo "🔑 Package fingerprint: ${FINGERPRINT:0:16}..."
         echo "fingerprint=$FINGERPRINT" >> $GITHUB_OUTPUT
+        
+        # Count packages for statistics
+        PACKAGE_COUNT=$(echo "$PACKAGES" | wc -w)
+        echo "📊 Total unique packages: $PACKAGE_COUNT"
+        echo "package_count=$PACKAGE_COUNT" >> $GITHUB_OUTPUT
     
-    # Step 2: Cache base TeX Live installation
+    # Step 3: Cache base TeX Live installation
     - name: Cache TeX Live Base
       id: cache-texlive-base
       uses: actions/cache@v4
       with:
         path: ~/texlive
-        key: texlive-base-2023-v2
+        key: texlive-base-2023-scheme-basic-v3
+        restore-keys: |
+          texlive-base-2023-scheme-basic-
     
-    # Step 3: Cache project-specific packages
+    # Step 4: Cache project-specific packages  
     - name: Cache Project Packages
       id: cache-packages
       uses: actions/cache@v4
       with:
         path: ~/texlive-packages
-        key: texlive-packages-${{ steps.analyze.outputs.fingerprint }}
+        key: texlive-packages-${{ steps.analyze.outputs.fingerprint }}-v2
         restore-keys: |
+          texlive-packages-${{ steps.analyze.outputs.fingerprint }}-
           texlive-packages-
     
-    # Step 4: Install TeX Live base (if not cached)
+    # Step 5: Install TeX Live base (if not cached)
     - name: Install TeX Live Base
       if: steps.cache-texlive-base.outputs.cache-hit != 'true'
       run: |
-        echo "Installing minimal TeX Live base..."
+        echo "📥 Installing minimal TeX Live base..."
         
+        # Create temp directory for installation
         mkdir -p ~/texlive-temp
         cd ~/texlive-temp
         
-        wget -q http://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz
+        # Download and extract installer
+        echo "Downloading TeX Live installer..."
+        wget -q --show-progress --progress=bar:force \
+          http://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz
         tar -xzf install-tl-unx.tar.gz
         
+        # Find installer directory
         INSTALL_DIR=$(find . -name "install-tl-2*" -type d | head -1)
         cd "$INSTALL_DIR"
         
+        # Create minimal installation profile
         cat > texlive.profile << 'EOF'
         selected_scheme scheme-basic
         TEXDIR ~/texlive/2023
@@ -97,261 +183,380 @@ jobs:
         option_w32_multi_user 0
         EOF
         
+        # Install TeX Live
+        echo "Installing TeX Live (this may take a minute)..."
         ./install-tl -profile texlive.profile
         
-        # Install only essential core packages
+        # Install absolute minimal required packages
+        echo "Installing essential packages..."
         ~/texlive/2023/bin/x86_64-linux/tlmgr install \
           latex-bin latexconfig latex-fonts latex \
-          tools graphics hyperref url
+          tools graphics hyperref url etoolbox
         
-        echo "Base TeX Live installed!"
+        # Cleanup
+        cd ~
+        rm -rf ~/texlive-temp
+        
+        echo "✅ Base TeX Live installation complete!"
     
-    # Step 5: Create package mapping configuration
-    - name: Setup Package Mapping
+    # Step 6: Setup PATH and verify installation
+    - name: Setup TeX Live Environment
       run: |
-        # Create default package mapping if it doesn't exist
-        if [ ! -f "package-map.json" ]; then
-          cat > package-map.json << 'EOF'
-        {
-          "amsmath": "amsmath",
-          "amssymb": "amsfonts",
-          "amsthm": "amscls",
-          "babel": "babel",
-          "geometry": "geometry",
-          "graphicx": "graphics",
-          "tikz": "pgf",
-          "pgfplots": "pgfplots",
-          "algorithm": "algorithms",
-          "algorithmicx": "algorithmicx",
-          "algpseudocode": "algorithmicx",
-          "listings": "listings",
-          "hyperref": "hyperref",
-          "xcolor": "xcolor",
-          "mathtools": "mathtools",
-          "booktabs": "booktabs",
-          "array": "tools",
-          "longtable": "tools",
-          "multirow": "multirow",
-          "fancyhdr": "fancyhdr",
-          "subcaption": "caption",
-          "float": "float",
-          "wrapfig": "wrapfig",
-          "lipsum": "lipsum",
-          "multicol": "tools",
-          "enumerate": "tools",
-          "tikz-3dplot": "tikz-3dplot",
-          "fontspec": "fontspec",
-          "polyglossia": "polyglossia",
-          "bidi": "bidi",
-          "bm": "tools",
-          "physics": "physics",
-          "siunitx": "siunitx",
-          "xpatch": "xpatch",
-          "inputenc": "latex",
-          "fontenc": "latex",
-          "lmodern": "lm",
-          "microtype": "microtype",
-          "enumitem": "enumitem",
-          "caption": "caption",
-          "biblatex": "biblatex",
-          "natbib": "natbib",
-          "cite": "cite",
-          "cleveref": "cleveref",
-          "glossaries": "glossaries",
-          "makeidx": "latex",
-          "imakeidx": "imakeidx",
-          "pdfpages": "pdfpages",
-          "rotating": "rotating",
-          "tabularx": "tools",
-          "colortbl": "colortbl",
-          "xspace": "tools",
-          "setspace": "setspace",
-          "parskip": "parskip",
-          "indentfirst": "tools",
-          "appendix": "appendix",
-          "titlesec": "titlesec",
-          "titletoc": "titletoc",
-          "fancybox": "fancybox",
-          "mdframed": "mdframed",
-          "tcolorbox": "tcolorbox",
-          "minted": "minted",
-          "soul": "soul",
-          "ulem": "ulem",
-          "cancel": "cancel",
-          "textcomp": "latex",
-          "gensymb": "was",
-          "wasysym": "wasysym",
-          "marvosym": "marvosym",
-          "eurosym": "eurosym",
-          "pifont": "psnfss",
-          "dingbat": "dingbat",
-          "ifsym": "ifsym",
-          "tipa": "tipa",
-          "url": "url",
-          "breakurl": "breakurl"
-        }
-        EOF
-        fi
+        # Add TeX Live to PATH
+        echo "$HOME/texlive/2023/bin/x86_64-linux" >> $GITHUB_PATH
+        export PATH="$HOME/texlive/2023/bin/x86_64-linux:$PATH"
+        
+        # Verify installation
+        echo "🔍 Verifying TeX Live installation..."
+        which pdflatex || (echo "❌ pdflatex not found!" && exit 1)
+        pdflatex --version
+        
+        # Show cache status
+        echo ""
+        echo "📊 Cache Status:"
+        echo "  Base TeX Live: ${{ steps.cache-texlive-base.outputs.cache-hit == 'true' && '✅ Hit' || '❌ Miss' }}"
+        echo "  Package cache: ${{ steps.cache-packages.outputs.cache-hit == 'true' && '✅ Hit' || '❌ Miss' }}"
+        echo "  Packages to check: ${{ steps.analyze.outputs.package_count }}"
     
-    # Step 6: Install adaptive packages
-    - name: Install Required Packages Adaptively
+    # Step 7: Install required packages adaptively
+    - name: Install Required Packages
+      id: install-packages
       run: |
         export PATH="$HOME/texlive/2023/bin/x86_64-linux:$PATH"
         
-        # Initialize package tracking
+        # Create package directory
         mkdir -p ~/texlive-packages
-        MANIFEST_FILE="$HOME/texlive-packages/manifest-${{ steps.analyze.outputs.fingerprint }}.txt"
         
-        # Check if we have a cached manifest for this fingerprint
-        if [ -f "$MANIFEST_FILE" ]; then
-          echo "Using cached package manifest for fingerprint: ${{ steps.analyze.outputs.fingerprint }}"
-          cat "$MANIFEST_FILE"
-        else
-          echo "Building new package manifest..."
-          
-          # Parse package mapping
-          PACKAGES="${{ steps.analyze.outputs.latex_packages }}"
-          
-          # Python script to resolve packages
-          python3 << 'PYTHON_SCRIPT'
+        # Create Python script for package resolution
+        cat > install_packages.py << 'PYTHON_EOF'
         import json
         import subprocess
         import os
         import sys
+        import time
+        from pathlib import Path
         
-        # Load package mapping
-        with open('package-map.json', 'r') as f:
-            package_map = json.load(f)
+        def run_command(cmd, check=True):
+            """Run a shell command and return output."""
+            try:
+                result = subprocess.run(
+                    cmd, shell=True, capture_output=True, text=True, check=check
+                )
+                return result.stdout.strip(), result.returncode
+            except subprocess.CalledProcessError as e:
+                return e.stderr, e.returncode
         
-        # Get required packages from environment
-        required_packages = os.environ.get('PACKAGES', '').split()
-        
-        # Resolve to tlmgr packages
-        tlmgr_packages = set()
-        unknown_packages = []
-        
-        for pkg in required_packages:
-            if pkg in package_map:
-                tlmgr_packages.add(package_map[pkg])
-            else:
-                # Try to use the package name directly
-                unknown_packages.append(pkg)
-        
-        # Check which packages are already installed
-        installed = set()
-        try:
-            result = subprocess.run(
-                [os.path.expanduser('~/texlive/2023/bin/x86_64-linux/tlmgr'), 'list', '--only-installed'],
-                capture_output=True, text=True, check=True
+        def get_installed_packages():
+            """Get list of currently installed packages."""
+            installed = set()
+            output, _ = run_command(
+                "~/texlive/2023/bin/x86_64-linux/tlmgr list --only-installed", 
+                check=False
             )
-            for line in result.stdout.splitlines():
+            for line in output.splitlines():
                 if line.startswith('i '):
                     parts = line.split(':')
                     if parts:
-                        installed.add(parts[0].replace('i ', '').strip())
-        except:
-            pass
+                        pkg_name = parts[0].replace('i ', '').strip()
+                        installed.add(pkg_name)
+            return installed
         
-        # Determine what needs to be installed
-        to_install = list(tlmgr_packages - installed) + unknown_packages
+        def check_package_exists(package):
+            """Check if a package exists in TeX Live."""
+            _, returncode = run_command(
+                f"~/texlive/2023/bin/x86_64-linux/tlmgr info {package}", 
+                check=False
+            )
+            return returncode == 0
         
-        if to_install:
-            print(f"Installing packages: {' '.join(to_install)}")
+        def install_package(package):
+            """Install a single package."""
+            print(f"  Installing: {package}", flush=True)
+            output, returncode = run_command(
+                f"~/texlive/2023/bin/x86_64-linux/tlmgr install {package}",
+                check=False
+            )
+            if returncode == 0:
+                print(f"    ✅ Success", flush=True)
+                return True
+            else:
+                print(f"    ❌ Failed: {output[:100]}", flush=True)
+                return False
+        
+        def main():
+            # Load package mapping from root directory
+            package_map_path = Path("package-map.json")
+            if not package_map_path.exists():
+                print("❌ package-map.json not found in root directory!")
+                sys.exit(1)
             
-            # Install in batches to handle failures gracefully
-            batch_size = 10
-            for i in range(0, len(to_install), batch_size):
-                batch = to_install[i:i+batch_size]
-                try:
-                    subprocess.run(
-                        [os.path.expanduser('~/texlive/2023/bin/x86_64-linux/tlmgr'), 'install'] + batch,
-                        check=True
-                    )
-                    print(f"Successfully installed: {' '.join(batch)}")
-                except subprocess.CalledProcessError:
-                    # Try packages one by one if batch fails
-                    for pkg in batch:
-                        try:
-                            subprocess.run(
-                                [os.path.expanduser('~/texlive/2023/bin/x86_64-linux/tlmgr'), 'install', pkg],
-                                check=True
-                            )
-                            print(f"Installed: {pkg}")
-                        except:
-                            print(f"Failed to install: {pkg} (may not exist or already installed)")
+            with open(package_map_path, 'r') as f:
+                package_map = json.load(f)
+            
+            print(f"📦 Loaded {len(package_map)} package mappings from package-map.json")
+            
+            # Get required packages from environment
+            required_packages = os.environ.get('PACKAGES', '').split()
+            if not required_packages:
+                print("⚠️ No packages to install")
+                return
+            
+            print(f"\n📋 Required packages ({len(required_packages)}):")
+            for pkg in required_packages:
+                print(f"  - {pkg}")
+            
+            # Get currently installed packages
+            print("\n🔍 Checking installed packages...")
+            installed = get_installed_packages()
+            print(f"  Found {len(installed)} installed packages")
+            
+            # Resolve package names to tlmgr names
+            tlmgr_packages = set()
+            unmapped_packages = []
+            
+            for pkg in required_packages:
+                if pkg in package_map:
+                    tlmgr_name = package_map[pkg]
+                    tlmgr_packages.add(tlmgr_name)
+                    if pkg != tlmgr_name:
+                        print(f"  📝 Mapped: {pkg} → {tlmgr_name}")
+                else:
+                    # Try the package name directly
+                    unmapped_packages.append(pkg)
+                    print(f"  ⚠️ No mapping for: {pkg} (will try as-is)")
+            
+            # Combine all packages to install
+            all_packages = list(tlmgr_packages) + unmapped_packages
+            
+            # Filter out already installed packages
+            to_install = [pkg for pkg in all_packages if pkg not in installed]
+            
+            if not to_install:
+                print("\n✅ All required packages are already installed!")
+                return
+            
+            print(f"\n📥 Installing {len(to_install)} packages...")
+            
+            # Install packages
+            success_count = 0
+            failed_packages = []
+            
+            for i, package in enumerate(to_install, 1):
+                print(f"\n[{i}/{len(to_install)}] Package: {package}")
+                
+                # Check if package exists first
+                if not check_package_exists(package):
+                    print(f"  ⚠️ Package does not exist in TeX Live")
+                    failed_packages.append(package)
+                    continue
+                
+                # Try to install
+                if install_package(package):
+                    success_count += 1
+                else:
+                    failed_packages.append(package)
+            
+            # Summary
+            print(f"\n📊 Installation Summary:")
+            print(f"  ✅ Successfully installed: {success_count}/{len(to_install)}")
+            
+            if failed_packages:
+                print(f"  ❌ Failed packages ({len(failed_packages)}):")
+                for pkg in failed_packages:
+                    print(f"    - {pkg}")
+                print("\n💡 Tip: Add missing package mappings to package-map.json")
+            
+            # Save manifest for this fingerprint
+            fingerprint = os.environ.get('FINGERPRINT', 'unknown')
+            manifest_file = Path(f"~/texlive-packages/manifest-{fingerprint}.txt").expanduser()
+            manifest_file.parent.mkdir(parents=True, exist_ok=True)
+            
+            with open(manifest_file, 'w') as f:
+                f.write('\n'.join(sorted(all_packages)))
+            
+            print(f"\n💾 Saved package manifest: {manifest_file.name}")
         
-        # Save manifest
-        manifest_file = os.path.expanduser(f'~/texlive-packages/manifest-${{ steps.analyze.outputs.fingerprint }}.txt')
-        with open(manifest_file, 'w') as f:
-            f.write('\n'.join(sorted(tlmgr_packages | set(unknown_packages))))
+        if __name__ == "__main__":
+            main()
+        PYTHON_EOF
         
-        print("Package installation completed!")
-        PYTHON_SCRIPT
+        # Run the installation script
+        PACKAGES="${{ steps.analyze.outputs.latex_packages }}" \
+        FINGERPRINT="${{ steps.analyze.outputs.fingerprint }}" \
+        python3 install_packages.py
+        
+        # Check exit code
+        if [ $? -ne 0 ]; then
+          echo "⚠️ Some packages may have failed to install, but continuing..."
         fi
-        
-        # Verify critical packages
-        echo "Verifying LaTeX installation..."
-        which pdflatex
-        pdflatex --version
     
-    # Step 7: Compile LaTeX with intelligent retry
+    # Step 8: Compile LaTeX document
     - name: Compile LaTeX Document
+      id: compile
       run: |
         export PATH="$HOME/texlive/2023/bin/x86_64-linux:$PATH"
         
+        # Check for main.tex
         if [ ! -f "main.tex" ]; then
-          echo "Error: main.tex not found!"
+          echo "❌ Error: main.tex not found in root directory!"
+          echo "Available .tex files:"
+          find . -name "*.tex" -type f
           exit 1
         fi
         
-        echo "Starting LaTeX compilation..."
+        echo "📄 Starting LaTeX compilation..."
+        echo "════════════════════════════════════════"
         
-        # First pass
-        pdflatex -interaction=nonstopmode main.tex || true
+        # Function to extract errors from log
+        extract_errors() {
+          if [ -f "main.log" ]; then
+            grep -A 2 "^!" main.log || true
+            grep "LaTeX Error:" main.log || true
+            grep "Package.*Error:" main.log || true
+          fi
+        }
         
-        # Check for bibliography
-        if [ -f "main.aux" ] && grep -q "\\citation\|\\bibdata\|\\bibstyle" main.aux; then
-          echo "Processing bibliography..."
-          bibtex main || true
-          pdflatex -interaction=nonstopmode main.tex || true
+        # First compilation pass
+        echo "🔄 Pass 1/3: Initial compilation..."
+        if pdflatex -interaction=nonstopmode -halt-on-error main.tex; then
+          echo "  ✅ Pass 1 successful"
+        else
+          echo "  ⚠️ Pass 1 failed (this might be normal for cross-references)"
+          if [ "${{ github.event.inputs.debug_mode }}" == "true" ]; then
+            extract_errors
+          fi
         fi
         
-        # Final pass for references
-        pdflatex -interaction=nonstopmode main.tex || true
+        # Check for bibliography
+        if [ -f "main.aux" ] && grep -q "\\citation\|\\bibdata\|\\bibstyle" main.aux 2>/dev/null; then
+          echo "📚 Processing bibliography..."
+          if bibtex main; then
+            echo "  ✅ Bibliography processed"
+          else
+            echo "  ⚠️ Bibliography processing failed"
+          fi
+          
+          # Recompile after bibliography
+          echo "🔄 Pass 2/3: Post-bibliography compilation..."
+          pdflatex -interaction=nonstopmode main.tex || true
+        else
+          echo "📝 No bibliography detected"
+        fi
+        
+        # Final compilation pass for cross-references
+        echo "🔄 Pass 3/3: Final compilation..."
+        if pdflatex -interaction=nonstopmode main.tex; then
+          echo "  ✅ Final pass successful"
+        else
+          echo "  ❌ Final pass failed"
+        fi
+        
+        echo "════════════════════════════════════════"
         
         # Check if PDF was generated
         if [ -f "main.pdf" ]; then
-          echo "✅ Compilation successful!"
-          ls -la main.pdf
+          echo "✅ PDF generated successfully!"
+          ls -lh main.pdf
+          
+          # Get page count if possible
+          if command -v pdfinfo &> /dev/null; then
+            PAGES=$(pdfinfo main.pdf | grep Pages | awk '{print $2}')
+            echo "📄 Document has $PAGES pages"
+          fi
         else
-          echo "❌ Compilation failed. Checking log for missing packages..."
+          echo "❌ PDF generation failed!"
+          echo ""
+          echo "🔍 Checking for missing packages..."
           
           # Extract missing packages from log
-          MISSING=$(grep "! LaTeX Error: File \`.*\.sty' not found" main.log | \
-                    sed "s/.*File \`\(.*\)\.sty.*/\1/" | sort -u)
-          
-          if [ -n "$MISSING" ]; then
-            echo "Missing packages detected: $MISSING"
-            echo "::warning::Missing LaTeX packages: $MISSING. Please update package-map.json"
+          if [ -f "main.log" ]; then
+            MISSING=$(grep "! LaTeX Error: File \`.*\.sty' not found" main.log | \
+                      sed "s/.*File \`\(.*\)\.sty.*/\1/" | sort -u)
+            
+            if [ -n "$MISSING" ]; then
+              echo "⚠️ Missing packages detected:"
+              echo "$MISSING" | while read -r pkg; do
+                echo "  - $pkg"
+              done
+              echo ""
+              echo "💡 To fix: Add these mappings to package-map.json:"
+              echo "$MISSING" | while read -r pkg; do
+                echo "  \"$pkg\": \"<tlmgr-package-name>\","
+              done
+            fi
+            
+            echo ""
+            echo "📋 LaTeX Errors:"
+            extract_errors
           fi
           
-          # Show relevant error messages
-          grep -A 3 "^!" main.log || true
           exit 1
         fi
     
-    # Step 8: Commit the PDF
-    - name: Commit PDF
+    # Step 9: Generate compilation report
+    - name: Generate Compilation Report
+      if: success() && github.event.inputs.debug_mode == 'true'
       run: |
+        echo "📊 Compilation Statistics"
+        echo "═══════════════════════"
+        echo ""
+        echo "Package Analysis:"
+        echo "  • Total packages found: ${{ steps.analyze.outputs.package_count }}"
+        echo "  • Package fingerprint: ${FINGERPRINT:0:16}..."
+        echo ""
+        echo "Cache Performance:"
+        echo "  • Base TeX Live: ${{ steps.cache-texlive-base.outputs.cache-hit == 'true' && 'HIT ✅' || 'MISS ❌' }}"
+        echo "  • Package cache: ${{ steps.cache-packages.outputs.cache-hit == 'true' && 'HIT ✅' || 'MISS ❌' }}"
+        echo ""
+        
+        if [ -f "main.log" ]; then
+          echo "Compilation Warnings:"
+          grep -c "LaTeX Warning:" main.log || echo "  • Warnings: 0"
+          grep -c "Overfull" main.log || echo "  • Overfull boxes: 0"
+          grep -c "Underfull" main.log || echo "  • Underfull boxes: 0"
+        fi
+    
+    # Step 10: Commit and push PDF
+    - name: Commit PDF
+      if: success()
+      run: |
+        # Configure git
         git config --local user.email "action@github.com"
         git config --local user.name "LaTeX Compiler Bot"
         
+        # Add PDF
         git add main.pdf
         
+        # Check if there are changes
         if ! git diff --staged --quiet; then
-          git commit -m "Auto-compile LaTeX [skip ci] $(date '+%Y-%m-%d %H:%M:%S')"
+          # Create detailed commit message
+          COMMIT_MSG="📄 Auto-compile LaTeX [skip ci]"
+          
+          if [ -f "main.pdf" ] && command -v pdfinfo &> /dev/null; then
+            PAGES=$(pdfinfo main.pdf | grep Pages | awk '{print $2}')
+            SIZE=$(ls -lh main.pdf | awk '{print $5}')
+            COMMIT_MSG="$COMMIT_MSG | $PAGES pages, $SIZE"
+          fi
+          
+          COMMIT_MSG="$COMMIT_MSG | $(date '+%Y-%m-%d %H:%M:%S')"
+          
+          git commit -m "$COMMIT_MSG"
           git push
-          echo "PDF committed successfully!"
+          
+          echo "✅ PDF committed and pushed successfully!"
         else
-          echo "ℹNo changes to commit"
+          echo "ℹ️ No changes in PDF - skipping commit"
         fi
+    
+    # Step 11: Upload artifacts for debugging
+    - name: Upload Compilation Artifacts
+      if: failure() || github.event.inputs.debug_mode == 'true'
+      uses: actions/upload-artifact@v3
+      with:
+        name: latex-compilation-artifacts
+        path: |
+          main.log
+          main.aux
+          main.out
+          package-map.json
+        retention-days: 7
