@@ -122,6 +122,7 @@ jobs:
           ["lipsum"]="lipsum"
           ["multicol"]="tools"
           ["enumerate"]="tools"
+          ["tikz"]="tikz"
         )
         
         MISSING_PACKAGES=()
