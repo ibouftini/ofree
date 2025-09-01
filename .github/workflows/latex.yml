@@ -53,18 +53,26 @@ jobs:
         key: packages-${{ steps.analyze.outputs.fingerprint }}
     
     # Install TeX Live if not cached
-    - name: Install TeX Live Base
-      if: steps.cache-texlive.outputs.cache-hit != 'true'
+    - name: Install TeX Live to user directory
+      if: steps.cache.outputs.cache-hit != 'true'
       run: |
-        echo "Installing TeX Live..."
-        mkdir -p ~/texlive-temp && cd ~/texlive-temp
+        echo "Installing TeX Live to ~/texlive..."
         
+        # Create installation directory
+        mkdir -p ~/texlive-temp
+        cd ~/texlive-temp
+        
+        # Download installer
         wget -q http://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz
         tar -xzf install-tl-unx.tar.gz
-        cd install-tl-*
         
+        # Find and enter installer directory
+        INSTALL_DIR=$(find . -name "install-tl-2*" -type d | head -1)
+        cd "$INSTALL_DIR"
+        
+        # Create installation profile for user directory
         cat > texlive.profile << 'EOF'
-        selected_scheme scheme-basic
+        selected_scheme scheme-medium
         TEXDIR ~/texlive/2023
         TEXMFCONFIG ~/texlive/2023/texmf-config
         TEXMFHOME ~/texlive/2023/texmf
@@ -73,7 +81,7 @@ jobs:
         TEXMFSYSVAR ~/texlive/2023/texmf-var
         TEXMFVAR ~/texlive/2023/texmf-var
         option_adjustrepo 1
-        option_autobackup 0
+        option_autobackup 1
         option_desktop_integration 0
         option_doc 0
         option_file_assocs 0
@@ -83,15 +91,16 @@ jobs:
         option_path 0
         option_post_code 1
         option_src 0
+        option_sys_bin ~/texlive/2023/bin
+        option_sys_info ~/texlive/2023/share/info
+        option_sys_man ~/texlive/2023/share/man
+        option_w32_multi_user 0
         EOF
         
+        # Install to user directory (no sudo needed)
         ./install-tl -profile texlive.profile
         
-        # Install minimal required packages
-        ~/texlive/2023/bin/x86_64-linux/tlmgr install \
-          latex-bin latexconfig latex-fonts latex tools graphics hyperref
-        
-        cd ~ && rm -rf ~/texlive-temp
+        echo "TeX Live base installation completed!"
     
     # Setup PATH
     - name: Setup PATH
