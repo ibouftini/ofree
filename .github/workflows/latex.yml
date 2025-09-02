@@ -1,4 +1,4 @@
-name: LaTeX Compiler
+name: LaTeX Compiler with Comprehensive Caching
 
 on:
   push:
@@ -16,17 +16,20 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
     
-    - name: Cache TeX Live
+    - name: Cache TeX Live with packages
       id: cache
       uses: actions/cache@v4
       with:
         path: ~/texlive
-        key: texlive-user-install-v1
+        key: texlive-comprehensive-v2-${{ hashFiles('**/packages.txt') }}
+        restore-keys: |
+          texlive-comprehensive-v2-
+          texlive-comprehensive-
     
-    - name: Install TeX Live to user directory
+    - name: Install TeX Live with comprehensive packages
       if: steps.cache.outputs.cache-hit != 'true'
       run: |
-        echo "Installing TeX Live to ~/texlive..."
+        echo "Installing TeX Live with comprehensive packages to ~/texlive..."
         
         # Create installation directory
         mkdir -p ~/texlive-temp
@@ -70,16 +73,86 @@ jobs:
         # Install to user directory (no sudo needed)
         ./install-tl -profile texlive.profile
         
-        # Install commonly needed packages that aren't in basic scheme
-        ~/texlive/2023/bin/x86_64-linux/tlmgr install \
-          mathtools booktabs array longtable multirow \
-          fancyhdr hyperref xcolor listings algorithm \
-          algorithmicx algpseudocode subcaption float \
-          wrapfig lipsum
+        # Add TeX Live to PATH for package installation
+        export PATH="$HOME/texlive/2023/bin/x86_64-linux:$PATH"
         
-        echo "TeX Live installed to user directory!"
+        echo "Installing comprehensive package collection..."
+        
+        # Install comprehensive package collection
+        ~/texlive/2023/bin/x86_64-linux/tlmgr install \
+          amsmath amsfonts amssymb amsthm mathtools physics siunitx \
+          booktabs array longtable multirow multicol tabularx colortbl \
+          diagbox threeparttable tabu \
+          graphicx graphics xcolor tikz pgf pgfplots circuitikz \
+          float wrapfig subfigure subcaption caption rotating \
+          algorithm algorithms algorithmicx algpseudocode listings minted \
+          hyperref url fancyhdr geometry titlesec titletoc appendix \
+          footmisc enumitem paralist soul ulem microtype \
+          biblatex natbib babel inputenc fontenc \
+          lipsum datetime ifthen calc xspace comment verbatim \
+          units steinmetz bodeplot chemmacros mhchem chemfig \
+          cancel nccmath empheq cases tools \
+          hepnames hep breqn mathrsfs systeme \
+          ntheorem thmtools eulervm mathdesign \
+          pgfplotstable datatool sparklines \
+          python matlab-prettifier \
+          || {
+            echo "Some packages failed to install, trying individual installation..."
+            
+            # Core packages that should always be available
+            CORE_PACKAGES=(
+              "amsmath" "amsfonts" "amssymb" "mathtools" "physics" "siunitx"
+              "booktabs" "array" "longtable" "multirow" "tabularx" 
+              "graphicx" "xcolor" "tikz" "pgf" "pgfplots"
+              "float" "wrapfig" "subcaption" "caption"
+              "algorithm" "algorithms" "algorithmicx" "listings"
+              "hyperref" "fancyhdr" "geometry" "enumitem"
+              "biblatex" "natbib" "babel" "inputenc" "fontenc"
+              "lipsum" "calc" "tools"
+            )
+            
+            # Extended packages (nice to have)
+            EXTENDED_PACKAGES=(
+              "circuitikz" "units" "steinmetz" "chemmacros" "mhchem"
+              "cancel" "nccmath" "empheq" "cases" "colortbl" "diagbox"
+              "threeparttable" "rotating" "algpseudocode" "minted"
+              "titlesec" "titletoc" "footmisc" "paralist" "soul" "ulem"
+              "microtype" "datetime" "ifthen" "xspace" "comment" "verbatim"
+              "hepnames" "breqn" "mathrsfs" "systeme" "ntheorem" "thmtools"
+              "eulervm" "mathdesign" "pgfplotstable" "datatool" "sparklines"
+            )
+            
+            # Install core packages (essential)
+            echo "Installing core packages..."
+            for pkg in "${CORE_PACKAGES[@]}"; do
+              echo "Installing core package: $pkg"
+              ~/texlive/2023/bin/x86_64-linux/tlmgr install "$pkg" || echo "Failed to install core package: $pkg"
+            done
+            
+            # Install extended packages (best effort)
+            echo "Installing extended packages..."
+            for pkg in "${EXTENDED_PACKAGES[@]}"; do
+              echo "Installing extended package: $pkg"
+              ~/texlive/2023/bin/x86_64-linux/tlmgr install "$pkg" || echo "Failed to install extended package: $pkg"
+            done
+          }
+        
+        # Clean up temporary files to reduce cache size
+        cd ~
+        rm -rf ~/texlive-temp
+        
+        # Remove documentation and source files to save space
+        find ~/texlive/2023 -name "doc" -type d -exec rm -rf {} + 2>/dev/null || true
+        find ~/texlive/2023 -name "source" -type d -exec rm -rf {} + 2>/dev/null || true
+        
+        # Display installation summary
+        echo "TeX Live with comprehensive packages installed!"
+        echo "Cache size:"
+        du -sh ~/texlive/
+        echo "Installed packages:"
+        ~/texlive/2023/bin/x86_64-linux/tlmgr list --only-installed | wc -l
     
-    - name: Setup TeX Live PATH
+    - name: Setup TeX Live PATH and verify installation
       run: |
         # Add TeX Live to PATH
         echo "$HOME/texlive/2023/bin/x86_64-linux" >> $GITHUB_PATH
@@ -89,216 +162,142 @@ jobs:
         which pdflatex
         pdflatex --version
         
-        echo "Cache hit: ${{ steps.cache.outputs.cache-hit }}"
+        echo "Cache status: ${{ steps.cache.outputs.cache-hit }}"
         if [ "${{ steps.cache.outputs.cache-hit }}" = "true" ]; then
-          echo "Using cached TeX Live installation!"
+          echo "✅ Using cached TeX Live installation with packages!"
+          echo "Installed packages:"
+          ~/texlive/2023/bin/x86_64-linux/tlmgr list --only-installed | wc -l
         else
-          echo "Fresh TeX Live installation completed!"
+          echo "✅ Fresh TeX Live installation with comprehensive packages completed!"
         fi
+        
+        # Display some key package availability
+        echo "Checking key packages:"
+        packages_to_check=("amsmath" "tikz" "pgfplots" "algorithm" "listings" "hyperref" "biblatex")
+        for pkg in "${packages_to_check[@]}"; do
+          if kpsewhich ${pkg}.sty >/dev/null 2>&1 || kpsewhich t-${pkg}.tex >/dev/null 2>&1; then
+            echo "✅ $pkg: Available"
+          else
+            echo "❌ $pkg: Not found"
+          fi
+        done
     
-    - name: Verify and install missing packages
+    - name: Install additional packages if needed
       run: |
         export PATH="$HOME/texlive/2023/bin/x86_64-linux:$PATH"
         
-        echo "Checking for required packages..."
+        echo "Checking for any missing packages from LaTeX files..."
         
-        # Comprehensive package map for mathematics, graphics, 3D, and more
-        declare -A PACKAGE_MAP=(
-        # Basic/essential packages
-        ["graphicx"]="graphics"
-        ["color"]="graphics"
-        ["xcolor"]="xcolor"
-        ["url"]="hyperref"
-        ["hyperref"]="hyperref"
-        ["amsmath"]="amsmath"
-        ["amssymb"]="amsfonts"
-        ["amsfonts"]="amsfonts"
-        ["amsthm"]="amscls"
+        # Extract package names from all .tex files
+        REQUIRED_PACKAGES=()
+        if compgen -G "*.tex" > /dev/null; then
+          # Extract \usepackage and \RequirePackage commands
+          REQUIRED_PACKAGES+=($(grep -h "\\\\usepackage\|\\\\RequirePackage" *.tex 2>/dev/null | \
+            sed 's/.*{\([^}]*\)}.*/\1/' | \
+            tr ',' '\n' | \
+            sed 's/^[[:space:]]*//' | \
+            sed 's/[[:space:]]*$//' | \
+            sort -u))
+        fi
         
-        # Mathematics packages
-        ["mathtools"]="mathtools"
-        ["bm"]="tools"
-        ["cancel"]="cancel"
-        ["physics"]="physics"
-        ["siunitx"]="siunitx"
-        ["nccmath"]="nccmath"
-        ["empheq"]="mathtools"
-        ["cases"]="mathtools"
-        
-        # Table packages
-        ["array"]="tools"
-        ["tabularx"]="tools"
-        ["longtable"]="tools"
-        ["booktabs"]="booktabs"
-        ["multirow"]="multirow"
-        ["multicol"]="tools"
-        ["colortbl"]="colortbl"
-        ["diagbox"]="diagbox"
-        ["threeparttable"]="threeparttable"
-        ["tabu"]="tabu"
-        
-        # Graphics and figures
-        ["graphics"]="graphics"
-        ["graphicx"]="graphics"
-        ["tikz"]="pgf"
-        ["pgfplots"]="pgfplots"
-        ["circuitikz"]="circuitikz"
-        ["float"]="float"
-        ["wrapfig"]="wrapfig"
-        ["subfigure"]="tools"
-        ["subcaption"]="caption"
-        ["caption"]="caption"
-        ["rotating"]="graphics"
-        
-        # Algorithm and code packages
-        ["algorithm"]="algorithms"
-        ["algorithmic"]="algorithms"
-        ["algorithmicx"]="algorithmicx"
-        ["algpseudocode"]="algorithmicx"
-        ["listings"]="listings"
-        ["minted"]="minted"
-        ["program"]="listings"
-        
-        # Engineering specific
-        ["units"]="units"
-        ["steinmetz"]="steinmetz"
-        ["circuitikz"]="circuitikz"
-        ["bodeplot"]="bodeplot"
-        ["siunitx"]="siunitx"
-        ["chemmacros"]="chemmacros"
-        
-        # Document structure
-        ["geometry"]="geometry"
-        ["fancyhdr"]="fancyhdr"
-        ["titlesec"]="titlesec"
-        ["titletoc"]="titletoc"
-        ["appendix"]="tools"
-        ["footmisc"]="footmisc"
-        
-        # References and bibliography
-        ["biblatex"]="biblatex"
-        ["natbib"]="natbib"
-        ["bibentry"]="bibentry"
-        
-        # Text formatting
-        ["enumitem"]="enumitem"
-        ["enumerate"]="tools"
-        ["itemize"]="tools"
-        ["paralist"]="paralist"
-        ["soul"]="soul"
-        ["ulem"]="ulem"
-        ["microtype"]="microtype"
-        
-        # Utilities and misc
-        ["lipsum"]="lipsum"
-        ["datetime"]="datetime"
-        ["ifthen"]="tools"
-        ["calc"]="tools"
-        ["xspace"]="tools"
-        ["comment"]="tools"
-        ["verbatim"]="tools"
-        
-        # Internationalization
-        ["babel"]="babel"
-        ["inputenc"]="inputenc"
-        ["fontenc"]="fontenc"
-        
-        # Programming/mathematical extensions
-        ["python"]="python"
-        ["matlab"]="matlab-prettifier"
-        ["cpp"]="listings"
-        ["java"]="listings"
-        
-        # Special engineering fonts
-        ["eulervm"]="eulervm"
-        ["mathdesign"]="mathdesign"
-        
-        # Plotting and data visualization
-        ["pgfplotstable"]="pgfplots"
-        ["datatool"]="datatool"
-        ["sparklines"]="sparklines"
-        
-        # Chemistry (for chemical engineering)
-        ["mhchem"]="mhchem"
-        ["chemfig"]="chemfig"
-        
-        # Physics symbols
-        ["hepnames"]="hepnames"
-        ["hep"]="hep"
-        
-        # Advanced mathematics
-        ["breqn"]="breqn"
-        ["mathrsfs"]="mathrsfs"
-        ["systeme"]="systeme"
-        
-        # Theorems and proofs
-        ["ntheorem"]="ntheorem"
-        ["thmtools"]="thmtools"
-        )
-        
+        # Check and install missing packages
         MISSING_PACKAGES=()
-        
-        # Check each package
-        for package in "${!PACKAGE_MAP[@]}"; do
-          if ! kpsewhich ${package}.sty >/dev/null 2>&1; then
-            repo_package="${PACKAGE_MAP[$package]}"
-            if [[ ! " ${MISSING_PACKAGES[@]} " =~ " ${repo_package} " ]]; then
-              echo "Missing package: $package (will install: $repo_package)"
-              MISSING_PACKAGES+=("$repo_package")
-            fi
-          else
-            echo "Found package: $package"
+        for package in "${REQUIRED_PACKAGES[@]}"; do
+          if [[ -n "$package" ]] && ! kpsewhich ${package}.sty >/dev/null 2>&1; then
+            echo "Missing package detected: $package"
+            MISSING_PACKAGES+=("$package")
           fi
         done
         
-        # Install missing packages if any
+        # Install any missing packages
         if [ ${#MISSING_PACKAGES[@]} -gt 0 ]; then
           echo "Installing missing packages: ${MISSING_PACKAGES[*]}"
           ~/texlive/2023/bin/x86_64-linux/tlmgr install "${MISSING_PACKAGES[@]}" || {
-                echo "Some packages failed to install, but continuing..."
-                # Try installing packages one by one to avoid complete failure
-                for pkg in "${MISSING_PACKAGES[@]}"; do
-                    echo "Attempting to install: $pkg"
-                    ~/texlive/2023/bin/x86_64-linux/tlmgr install "$pkg" || echo "Failed to install $pkg"
-                done
-            }
-          echo "Package installation completed!"
+            echo "Some additional packages failed to install, trying individually..."
+            for pkg in "${MISSING_PACKAGES[@]}"; do
+              echo "Attempting to install: $pkg"
+              ~/texlive/2023/bin/x86_64-linux/tlmgr install "$pkg" || echo "Failed to install $pkg"
+            done
+          }
         else
-          echo "All required packages are already installed!"
+          echo "All required packages are available!"
         fi
-        
-    - name: Compile LaTeX
+    
+    - name: Compile LaTeX documents
       run: |
         export PATH="$HOME/texlive/2023/bin/x86_64-linux:$PATH"
         
-        if [ ! -f "main.tex" ]; then
-          echo "Error: main.tex not found!"
+        # Find all main tex files (not included files)
+        MAIN_FILES=()
+        if compgen -G "*.tex" > /dev/null; then
+          for file in *.tex; do
+            # Check if this file is likely a main document (contains \documentclass)
+            if grep -q "\\\\documentclass" "$file"; then
+              MAIN_FILES+=("$file")
+            fi
+          done
+        fi
+        
+        # If no main files found, default to main.tex
+        if [ ${#MAIN_FILES[@]} -eq 0 ] && [ -f "main.tex" ]; then
+          MAIN_FILES=("main.tex")
+        fi
+        
+        if [ ${#MAIN_FILES[@]} -eq 0 ]; then
+          echo "Error: No LaTeX main files found!"
+          echo "Looking for files with \\documentclass or main.tex"
           exit 1
         fi
         
-        echo "Compiling main.tex..."
-        pdflatex -interaction=nonstopmode main.tex || true
+        # Compile each main file
+        SUCCESS=true
+        for tex_file in "${MAIN_FILES[@]}"; do
+          echo "Compiling $tex_file..."
+          pdf_file="${tex_file%.tex}.pdf"
+          
+          # Run pdflatex multiple times for proper cross-references
+          pdflatex -interaction=nonstopmode "$tex_file" || true
+          if [ -f "${tex_file%.tex}.aux" ]; then
+            # Run bibtex if .bib files exist
+            if compgen -G "*.bib" > /dev/null; then
+              bibtex "${tex_file%.tex}" || true
+            fi
+            # Second pass for references
+            pdflatex -interaction=nonstopmode "$tex_file" || true
+            # Third pass to be sure
+            pdflatex -interaction=nonstopmode "$tex_file" || true
+          fi
+          
+          if [ -f "$pdf_file" ]; then
+            echo "✅ Successfully compiled: $tex_file -> $pdf_file"
+            ls -la "$pdf_file"
+          else
+            echo "❌ Failed to compile: $tex_file"
+            if [ -f "${tex_file%.tex}.log" ]; then
+              echo "Error log:"
+              tail -n 50 "${tex_file%.tex}.log"
+            fi
+            SUCCESS=false
+          fi
+        done
         
-        if [ -f "main.pdf" ]; then
-          echo "Compilation successful!"
-          ls -la main.pdf
-        else
-          echo "Compilation failed"
-          cat main.log
+        if [ "$SUCCESS" = false ]; then
+          echo "One or more compilations failed"
           exit 1
         fi
     
-    - name: Commit PDF
+    - name: Commit generated PDFs
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "LaTeX Compiler"
         
-        git add main.pdf
+        # Add all generated PDF files
+        git add *.pdf || true
         
         if ! git diff --staged --quiet; then
           git commit -m "Auto-compile LaTeX: $(date '+%Y-%m-%d %H:%M:%S')"
           git push
-          echo "PDF committed successfully!"
+          echo "✅ PDFs committed successfully!"
         else
-          echo "No changes to commit"
+          echo "ℹ️  No changes to commit"
         fi
