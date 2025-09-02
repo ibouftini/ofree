@@ -101,11 +101,11 @@ jobs:
             
             # Core packages that should always be available
             CORE_PACKAGES=(
-              "amsmath" "amsfonts" "amssymb" "mathtools" "physics" "siunitx"
-              "booktabs" "array" "longtable" "multirow" "tabularx" 
-              "graphicx" "xcolor" "tikz" "pgf" "pgfplots"
+              "amsmath" "amsfonts" "amssymb" "amsthm" "mathtools" "physics" "siunitx" "bm"
+              "booktabs" "array" "longtable" "multirow" "tabularx" "enumerate"
+              "graphicx" "xcolor" "tikz" "pgf" "pgfplots" "pgfkeys" "pgfmath"
               "float" "wrapfig" "subcaption" "caption"
-              "algorithm" "algorithms" "algorithmicx" "listings"
+              "algorithm" "algorithms" "algorithmicx" "listings" "algpseudocode"
               "hyperref" "fancyhdr" "geometry" "enumitem"
               "biblatex" "natbib" "babel" "inputenc" "fontenc"
               "lipsum" "calc" "tools"
