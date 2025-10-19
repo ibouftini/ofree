@@ -1,0 +1,139 @@
+% !TeX program = xelatex
+
+\documentclass[12pt,a4paper]{article}
+
+\usepackage{fontspec}
+\usepackage{polyglossia}
+
+\setmainlanguage{english}
+\setotherlanguage{arabic}
+\setotherlanguage{russian}
+\setotherlanguage{greek}
+
+\setmainfont{DejaVu Serif}
+\newfontfamily\arabicfont[Script=Arabic]{DejaVu Sans}
+\newfontfamily\russianfont{DejaVu Serif}
+\newfontfamily\greekfont{DejaVu Serif}
+
+\usepackage{xcolor}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+
+\title{XeLaTeX Multilingual Test Document}
+\author{LaTeX Compiler Workflow}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+This document tests XeLaTeX compilation with multiple languages and Unicode support. The workflow should automatically detect the need for XeLaTeX based on the \texttt{fontspec} package and the \texttt{\% !TeX program = xelatex} directive.
+
+\section{European Languages}
+
+\subsection{English}
+Hello World! This is a test of the XeLaTeX compiler with modern Unicode fonts.
+
+\subsection{French}
+Bonjour le monde! Voici un test avec des caractères accentués: é, è, ê, à, ù, ç.
+
+\subsection{German}
+Guten Tag! Test mit deutschen Umlauten: ä, ö, ü, ß.
+
+\subsection{Spanish}
+¡Hola mundo! Prueba con caracteres especiales: ñ, á, é, í, ó, ú, ¿, ¡.
+
+\subsection{Russian}
+\begin{russian}
+Привет мир! Это тест кириллицы.
+\end{russian}
+
+\subsection{Greek}
+\begin{greek}
+Γεια σου κόσμε! Δοκιμή ελληνικών χαρακτήρων: α, β, γ, δ, ε, θ, λ, μ, π, σ, ω.
+\end{greek}
+
+\section{Middle Eastern Languages}
+
+\subsection{Arabic}
+\begin{arabic}
+مرحبا بالعالم! هذا اختبار للغة العربية.
+\end{arabic}
+
+\section{Asian Languages}
+
+\subsection{Chinese}
+你好世界！这是中文测试。
+
+\subsection{Japanese}
+こんにちは世界！日本語のテストです。
+
+\subsection{Korean}
+안녕하세요 세계! 한국어 테스트입니다.
+
+\section{Special Characters and Symbols}
+
+Mathematical symbols work naturally: ∀x ∈ ℝ, ∃y ∈ ℂ
+
+Currency symbols: €, £, ¥, ₹, ₽
+
+Arrows and symbols: →, ←, ↔, ⇒, ≠, ≤, ≥, ±, ×, ÷
+
+Emoji and special Unicode: ☺ ★ ♠ ♣ ♥ ♦
+
+\section{Typography Features}
+
+\subsection{Ligatures}
+XeLaTeX handles ligatures automatically: fi, fl, ff, ffi, ffl
+
+\subsection{Quotation Marks}
+"English quotes" and 'single quotes' work correctly.
+
+French style: « guillemets français »
+
+German style: „deutsche Anführungszeichen"
+
+\subsection{Dashes}
+Hyphen: -
+
+En-dash: --
+
+Em-dash: ---
+
+\section{Font Features}
+
+\textbf{Bold text in multiple scripts:}
+\begin{itemize}
+    \item \textbf{English bold}
+    \item \textbf{Français gras}
+    \item \textbf{Deutsch fett}
+\end{itemize}
+
+\textit{Italic text:}
+\begin{itemize}
+    \item \textit{English italic}
+    \item \textit{Français italique}
+    \item \textit{Deutsch kursiv}
+\end{itemize}
+
+\section{Color Test}
+
+XeLaTeX with color support:
+
+\textcolor{red}{Red text} and \textcolor{blue}{blue text} and \textcolor{green}{green text}.
+
+\section{Conclusion}
+
+If this document compiles successfully, it proves that:
+\begin{enumerate}
+    \item XeLaTeX compiler detection works
+    \item Unicode font support is functioning
+    \item Multilingual text rendering is operational
+    \item The workflow correctly handles complex typography
+\end{enumerate}
+
+This test document should compile to a PDF showing all languages correctly rendered with appropriate fonts.
+
+\end{document}
