@@ -240,13 +240,18 @@ jobs:
         
         # Third pass - finalize all references
         echo ""
-        echo "Pass 3: Final compilation..."
+        echo "Pass 3: Finalizing references..."
+        pdflatex -interaction=nonstopmode -file-line-error -shell-escape main.tex
+        
+        # Fourth pass - ensure all labels are resolved
+        echo ""
+        echo "Pass 4: Final synchronization..."
         pdflatex -interaction=nonstopmode -file-line-error -shell-escape main.tex
         
         if [ -f "main.pdf" ]; then
           echo ""
           echo "=========================================="
-          echo "Compilation successful after 3 passes!"
+          echo "Compilation successful after 4 passes!"
           echo "=========================================="
           ls -lh main.pdf
         else
