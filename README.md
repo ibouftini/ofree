@@ -4,7 +4,6 @@
 [![TeX Live 2025](https://img.shields.io/badge/TeX%20Live-2025-3D6117?logo=latex&logoColor=white)](https://tug.org/texlive/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
----
 
 ## 🚀 Quick Start
 
