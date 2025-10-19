@@ -214,42 +214,47 @@ jobs:
         fi
         
         echo "=========================================="
-        echo "Compiling main.tex with texliveonfly..."
+        echo "Compiling main.tex (multiple passes)..."
         echo "=========================================="
         
+        # First pass - install packages and generate aux files
+        echo "Pass 1: Initial compilation with package installation..."
         if texliveonfly \
           --compiler=pdflatex \
           --arguments="-interaction=nonstopmode -file-line-error -shell-escape" \
           main.tex; then
-          
-          echo "=========================================="
-          echo "Initial compilation successful!"
-          echo "=========================================="
+          echo "Pass 1 completed successfully"
         else
-          echo "=========================================="
-          echo "Compilation encountered issues!"
-          echo "=========================================="
-          
-          if [ -f "main.log" ]; then
-            echo ""
-            echo "=== Compilation Log (last 50 lines) ==="
-            tail -50 main.log
-          fi
-          
+          echo "Pass 1 encountered issues"
           if [ ! -f "main.pdf" ]; then
-            echo ""
-            echo "FATAL: No PDF generated"
+            echo "FATAL: No PDF generated in first pass"
+            tail -50 main.log
             exit 1
-          else
-            echo ""
-            echo "WARNING: PDF was generated despite errors"
           fi
         fi
         
+        # Second pass - resolve references, TOC, LOF, LOT
+        echo ""
+        echo "Pass 2: Resolving cross-references and building TOC..."
+        pdflatex -interaction=nonstopmode -file-line-error -shell-escape main.tex
+        
+        # Third pass - finalize all references
+        echo ""
+        echo "Pass 3: Final compilation..."
+        pdflatex -interaction=nonstopmode -file-line-error -shell-escape main.tex
+        
         if [ -f "main.pdf" ]; then
           echo ""
-          echo "PDF generated:"
+          echo "=========================================="
+          echo "Compilation successful after 3 passes!"
+          echo "=========================================="
           ls -lh main.pdf
+        else
+          echo "=========================================="
+          echo "FATAL: No PDF generated after compilation"
+          echo "=========================================="
+          tail -50 main.log
+          exit 1
         fi
     
     - name: Process bibliography and finalize
@@ -265,7 +270,7 @@ jobs:
         
         if [ "$HAS_BIBLIOGRAPHY" = true ]; then
           echo "=========================================="
-          echo "Bibliography detected - additional passes"
+          echo "Bibliography detected - processing..."
           echo "=========================================="
           
           if grep -q '\\usepackage.*biblatex' main.tex || \
@@ -290,19 +295,16 @@ jobs:
           fi
           
           echo ""
-          echo "Running final compilation passes..."
+          echo "Running additional passes after bibliography..."
           
-          texliveonfly \
-            --compiler=pdflatex \
-            --arguments="-interaction=nonstopmode -file-line-error" \
-            main.tex
+          # Two more passes to resolve bibliography citations
+          pdflatex -interaction=nonstopmode -file-line-error -shell-escape main.tex
+          pdflatex -interaction=nonstopmode -file-line-error -shell-escape main.tex
           
-          pdflatex -interaction=nonstopmode -file-line-error main.tex
-          
-          echo "Final passes completed"
+          echo "Bibliography processing completed"
         else
           echo "=========================================="
-          echo "No bibliography detected - single pass"
+          echo "No bibliography detected"
           echo "=========================================="
         fi
         
