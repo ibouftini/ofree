@@ -25,6 +25,63 @@ jobs:
         fi
         echo "Validation successful: main.tex found"
     
+    - name: Check if Phase 2 is needed
+      id: check-phase2
+      shell: bash
+      run: |
+        NEEDS_PHASE2=false
+        
+        echo "Analyzing main.tex to determine compilation strategy..."
+        echo "========================================================"
+        
+        # Check for bibliography/citations in source
+        if grep -qE '\\bibliography\{|\\addbibresource\{|\\printbibliography|\\cite\{|\\citep\{|\\citet\{' main.tex; then
+          echo "[CHECK] Bibliography/Citations: FOUND"
+          NEEDS_PHASE2=true
+        else
+          echo "[CHECK] Bibliography/Citations: NOT FOUND"
+        fi
+        
+        # Check for cross-references in source
+        if grep -qE '\\ref\{|\\pageref\{|\\eqref\{|\\label\{' main.tex; then
+          echo "[CHECK] Cross-references (ref/label): FOUND"
+          NEEDS_PHASE2=true
+        else
+          echo "[CHECK] Cross-references (ref/label): NOT FOUND"
+        fi
+        
+        # Check for table of contents
+        if grep -qE '\\tableofcontents|\\listoffigures|\\listoftables' main.tex; then
+          echo "[CHECK] TOC/LOF/LOT: FOUND"
+          NEEDS_PHASE2=true
+        else
+          echo "[CHECK] TOC/LOF/LOT: NOT FOUND"
+        fi
+        
+        # Check if .bib files exist
+        if ls *.bib >/dev/null 2>&1; then
+          echo "[CHECK] Bibliography files (.bib): FOUND"
+          NEEDS_PHASE2=true
+        else
+          echo "[CHECK] Bibliography files (.bib): NOT FOUND"
+        fi
+        
+        echo "========================================================"
+        
+        if [ "$NEEDS_PHASE2" = "true" ]; then
+          echo ""
+          echo "DECISION: Phase 2 (latexmk) is REQUIRED"
+          echo "Reason: Document contains features requiring multiple passes"
+          echo "NEEDS_PHASE2=true" >> $GITHUB_OUTPUT
+        else
+          echo ""
+          echo "DECISION: Phase 2 (latexmk) is NOT NEEDED"
+          echo "Reason: Document is simple, Phase 1 PDF is sufficient"
+          echo "NEEDS_PHASE2=false" >> $GITHUB_OUTPUT
+        fi
+        
+        echo "========================================================"
+    
     - name: Cache TeX Live installation
       id: cache-texlive
       uses: actions/cache@v4
@@ -50,15 +107,15 @@ jobs:
           if [ -n "$BIN_DIR" ] && [ -f "$BIN_DIR/pdflatex" ]; then
             echo "Valid TeX Live $YEAR installation found"
             echo "Binary directory: $BIN_DIR"
-            echo "SKIP_INSTALL=true" >> "$GITHUB_OUTPUT"
-            echo "BIN_DIR=$BIN_DIR" >> "$GITHUB_OUTPUT"
+            echo "SKIP_INSTALL=true" >> $GITHUB_OUTPUT
+            echo "BIN_DIR=$BIN_DIR" >> $GITHUB_OUTPUT
           else
             echo "TeX Live directory incomplete, reinstallation required"
-            echo "SKIP_INSTALL=false" >> "$GITHUB_OUTPUT"
+            echo "SKIP_INSTALL=false" >> $GITHUB_OUTPUT
           fi
         else
           echo "No TeX Live installation found in cache"
-          echo "SKIP_INSTALL=false" >> "$GITHUB_OUTPUT"
+          echo "SKIP_INSTALL=false" >> $GITHUB_OUTPUT
         fi
         
         echo "----------------------------------------"
@@ -241,11 +298,14 @@ jobs:
         echo "=========================================="
     
     - name: Phase 2 - Smart compilation with latexmk
+      if: steps.check-phase2.outputs.NEEDS_PHASE2 == 'true'
       shell: bash
       run: |
         echo "=========================================="
         echo "Phase 2: Smart compilation with latexmk"
         echo "=========================================="
+        echo "Running latexmk for advanced compilation..."
+        echo ""
         
         latexmk -pdf \
           -f \
@@ -262,20 +322,11 @@ jobs:
         fi
         
         echo ""
-        echo "PDF generated successfully despite any LaTeX errors"
-        
+        echo "PDF generated successfully"
         echo ""
         echo "=========================================="
-        echo "Compilation completed"
+        echo "Phase 2 completed with latexmk"
         echo "=========================================="
-        
-        if [ "${{ steps.check-phase2.outputs.NEEDS_PHASE2 }}" = "true" ]; then
-          echo "Used: Phase 1 (texliveonfly) + Phase 2 (latexmk)"
-        else
-          echo "Used: Phase 1 (texliveonfly) only"
-          echo "Phase 2 skipped - document is simple"
-        fi
-        
         ls -lh main.pdf
         
         if [ -f "main.log" ]; then
@@ -300,6 +351,29 @@ jobs:
           fi
         fi
         
+        echo "=========================================="
+    
+    - name: Compilation summary
+      shell: bash
+      run: |
+        echo ""
+        echo "=========================================="
+        echo "Compilation Summary"
+        echo "=========================================="
+        
+        if [ "${{ steps.check-phase2.outputs.NEEDS_PHASE2 }}" = "true" ]; then
+          echo "Strategy: Two-phase compilation"
+          echo "  Phase 1: texliveonfly (package installation)"
+          echo "  Phase 2: latexmk (smart multi-pass)"
+        else
+          echo "Strategy: Single-phase compilation"
+          echo "  Phase 1: texliveonfly (package installation)"
+          echo "  Phase 2: SKIPPED (not needed for simple document)"
+        fi
+        
+        echo ""
+        echo "Final PDF:"
+        ls -lh main.pdf
         echo "=========================================="
     
     - name: Upload logs on failure
@@ -385,14 +459,21 @@ jobs:
         fi
         
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### Compilation Details" >> $GITHUB_STEP_SUMMARY
+        echo "### Compilation Strategy" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "1. Phase 1: Package installation via texliveonfly" >> $GITHUB_STEP_SUMMARY
         
         if [ "${{ steps.check-phase2.outputs.NEEDS_PHASE2 }}" = "true" ]; then
+          echo "**Two-Phase Compilation:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. Phase 1: Package installation via texliveonfly" >> $GITHUB_STEP_SUMMARY
           echo "2. Phase 2: Smart compilation via latexmk (EXECUTED)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Reason: Document contains bibliography, cross-references, or TOC" >> $GITHUB_STEP_SUMMARY
         else
-          echo "2. Phase 2: Smart compilation via latexmk (SKIPPED - not needed)" >> $GITHUB_STEP_SUMMARY
+          echo "**Single-Phase Compilation:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. Phase 1: Package installation via texliveonfly" >> $GITHUB_STEP_SUMMARY
+          echo "2. Phase 2: Smart compilation via latexmk (SKIPPED)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Reason: Simple document without advanced features" >> $GITHUB_STEP_SUMMARY
         fi
         
         echo "" >> $GITHUB_STEP_SUMMARY
