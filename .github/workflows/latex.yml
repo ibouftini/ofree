@@ -529,9 +529,15 @@ jobs:
           echo "Installing XeLaTeX-specific packages..."
           tlmgr install fontspec unicode-math polyglossia xunicode 2>/dev/null || echo "Some packages already installed"
           
+          echo "Installing system fonts for multilingual support..."
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-liberation fonts-noto fonts-noto-cjk fonts-noto-cjk-extra fonts-noto-color-emoji fonts-noto-extra
+          
           if which xelatex >/dev/null 2>&1; then
             echo "XeLaTeX verification:"
             xelatex --version | head -2
+            echo "Installed fonts:"
+            fc-list | grep -i "noto\|liberation" | head -5
           else
             echo "Error: XeLaTeX installation failed"
             exit 1
