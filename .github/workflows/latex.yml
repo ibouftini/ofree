@@ -31,47 +31,56 @@ jobs:
       run: |
         NEEDS_PHASE2=false
         
-        echo "::group::Analyzing document structure"
-        echo "Checking main.tex for advanced features..."
+        echo "Analyzing main.tex to determine compilation strategy..."
+        echo "========================================================"
         
+        # Check for bibliography/citations in source
         if grep -qE '\\bibliography\{|\\addbibresource\{|\\printbibliography|\\cite\{|\\citep\{|\\citet\{' main.tex; then
-          echo "[FOUND] Bibliography/Citations"
+          echo "[CHECK] Bibliography/Citations: FOUND"
           NEEDS_PHASE2=true
         else
-          echo "[NOT FOUND] Bibliography/Citations"
+          echo "[CHECK] Bibliography/Citations: NOT FOUND"
         fi
         
+        # Check for cross-references in source
         if grep -qE '\\ref\{|\\pageref\{|\\eqref\{|\\label\{' main.tex; then
-          echo "[FOUND] Cross-references"
+          echo "[CHECK] Cross-references (ref/label): FOUND"
           NEEDS_PHASE2=true
         else
-          echo "[NOT FOUND] Cross-references"
+          echo "[CHECK] Cross-references (ref/label): NOT FOUND"
         fi
         
+        # Check for table of contents
         if grep -qE '\\tableofcontents|\\listoffigures|\\listoftables' main.tex; then
-          echo "[FOUND] TOC/LOF/LOT"
+          echo "[CHECK] TOC/LOF/LOT: FOUND"
           NEEDS_PHASE2=true
         else
-          echo "[NOT FOUND] TOC/LOF/LOT"
+          echo "[CHECK] TOC/LOF/LOT: NOT FOUND"
         fi
         
+        # Check if .bib files exist
         if ls *.bib >/dev/null 2>&1; then
-          echo "[FOUND] Bibliography files (.bib)"
+          echo "[CHECK] Bibliography files (.bib): FOUND"
           NEEDS_PHASE2=true
         else
-          echo "[NOT FOUND] Bibliography files"
+          echo "[CHECK] Bibliography files (.bib): NOT FOUND"
         fi
-        echo "::endgroup::"
+        
+        echo "========================================================"
         
         if [ "$NEEDS_PHASE2" = "true" ]; then
           echo ""
-          echo "Decision: Phase 2 (latexmk) REQUIRED"
+          echo "DECISION: Phase 2 (latexmk) is REQUIRED"
+          echo "Reason: Document contains features requiring multiple passes"
           echo "NEEDS_PHASE2=true" >> $GITHUB_OUTPUT
         else
           echo ""
-          echo "Decision: Phase 2 (latexmk) NOT NEEDED"
+          echo "DECISION: Phase 2 (latexmk) is NOT NEEDED"
+          echo "Reason: Document is simple, Phase 1 PDF is sufficient"
           echo "NEEDS_PHASE2=false" >> $GITHUB_OUTPUT
         fi
+        
+        echo "========================================================"
     
     - name: Cache TeX Live installation
       id: cache-texlive
@@ -87,7 +96,8 @@ jobs:
       id: check-texlive
       shell: bash
       run: |
-        echo "::group::Checking TeX Live cache"
+        echo "Checking TeX Live installation status..."
+        echo "----------------------------------------"
         
         YEAR=2025
         
@@ -95,38 +105,36 @@ jobs:
           BIN_DIR=$(find "$HOME/texlive/$YEAR/bin" -type d -name "*-linux" 2>/dev/null | head -1)
           
           if [ -n "$BIN_DIR" ] && [ -f "$BIN_DIR/pdflatex" ]; then
-            echo "Valid TeX Live $YEAR found in cache"
+            echo "Valid TeX Live $YEAR installation found"
             echo "Binary directory: $BIN_DIR"
             echo "SKIP_INSTALL=true" >> $GITHUB_OUTPUT
             echo "BIN_DIR=$BIN_DIR" >> $GITHUB_OUTPUT
           else
-            echo "TeX Live directory incomplete"
+            echo "TeX Live directory incomplete, reinstallation required"
             echo "SKIP_INSTALL=false" >> $GITHUB_OUTPUT
           fi
         else
-          echo "No TeX Live installation in cache"
+          echo "No TeX Live installation found in cache"
           echo "SKIP_INSTALL=false" >> $GITHUB_OUTPUT
         fi
         
-        echo "::endgroup::"
+        echo "----------------------------------------"
     
     - name: Install TeX Live to user directory
       if: steps.check-texlive.outputs.SKIP_INSTALL != 'true'
       shell: bash
       run: |
         echo "Installing TeX Live 2025..."
+        echo "----------------------------------------"
         
         YEAR=2025
         
-        echo "::group::Downloading TeX Live installer"
         mkdir -p ~/texlive-temp
         cd ~/texlive-temp
+        
         wget -q http://mirror.ctan.org/systems/texlive/tlnet/install-tl-unx.tar.gz
         tar -xzf install-tl-unx.tar.gz
-        echo "Download complete"
-        echo "::endgroup::"
         
-        echo "::group::Preparing installation profile"
         INSTALL_DIR=$(find . -name "install-tl-2*" -type d | head -1)
         cd "$INSTALL_DIR"
         
@@ -155,34 +163,28 @@ jobs:
         option_sys_man ~/texlive/2025/share/man
         option_w32_multi_user 0
         ENDPROFILE
-        echo "Profile created"
-        echo "::endgroup::"
         
-        echo "::group::Running TeX Live installation"
         ./install-tl -profile texlive.profile
         
         BIN_DIR=$(find ~/texlive/$YEAR/bin -type d -name "*-linux" | head -1)
         
         if [ -z "$BIN_DIR" ]; then
-          echo "Error: Could not find TeX Live bin directory"
+          echo "Error: Could not find TeX Live bin directory after installation"
           exit 1
         fi
         
-        echo "TeX Live core installed successfully"
+        echo "TeX Live installed successfully"
         echo "Binary directory: $BIN_DIR"
-        echo "::endgroup::"
         
-        echo "::group::Installing essential LaTeX packages"
         $BIN_DIR/tlmgr install \
           latexmk \
           amsmath amsfonts amscls \
           graphics xcolor \
           geometry fancyhdr \
           hyperref url
-        echo "Essential packages installed"
-        echo "::endgroup::"
         
-        echo "TeX Live installation completed"
+        echo "TeX Live basic installation completed"
+        echo "----------------------------------------"
     
     - name: Setup TeX Live PATH
       shell: bash
@@ -209,7 +211,8 @@ jobs:
     - name: Verify TeX Live installation
       shell: bash
       run: |
-        echo "::group::Verifying TeX Live installation"
+        echo "TeX Live Installation Verification"
+        echo "----------------------------------------"
         
         which pdflatex || { echo "Error: pdflatex not found"; exit 1; }
         echo "pdflatex version:"
@@ -227,7 +230,7 @@ jobs:
         echo ""
         
         echo "Cache status: ${{ steps.cache-texlive.outputs.cache-hit }}"
-        echo "::endgroup::"
+        echo "----------------------------------------"
     
     - name: Install Python for texliveonfly
       uses: actions/setup-python@v5
@@ -238,12 +241,11 @@ jobs:
       if: steps.cache-texlive.outputs.cache-hit != 'true'
       shell: bash
       run: |
-        echo "::group::Installing texliveonfly"
-        
         YEAR=2025
         BIN_DIR=$(find ~/texlive/$YEAR/bin -type d -name "*-linux" | head -1)
         export PATH="$BIN_DIR:$PATH"
         
+        echo "Installing texliveonfly..."
         tlmgr install texliveonfly
         
         SCRIPT_PATH="$BIN_DIR/texliveonfly"
@@ -252,16 +254,17 @@ jobs:
           echo "texliveonfly found at: $SCRIPT_PATH"
           chmod +x "$SCRIPT_PATH"
         else
-          echo "Creating wrapper script for texliveonfly..."
+          echo "texliveonfly not found as executable, searching for Python script..."
           SCRIPT_PATH=$(find ~/texlive/$YEAR/texmf-dist/scripts/texliveonfly -name "texliveonfly.py" 2>/dev/null | head -1)
           
           if [ -f "$SCRIPT_PATH" ]; then
+            echo "Found Python script at: $SCRIPT_PATH"
             echo '#!/bin/bash' > "$BIN_DIR/texliveonfly"
             echo 'YEAR=2025' >> "$BIN_DIR/texliveonfly"
             echo 'SCRIPT=$(find ~/texlive/$YEAR/texmf-dist/scripts/texliveonfly -name "texliveonfly.py" | head -1)' >> "$BIN_DIR/texliveonfly"
             echo 'python3 "$SCRIPT" "$@"' >> "$BIN_DIR/texliveonfly"
             chmod +x "$BIN_DIR/texliveonfly"
-            echo "Wrapper created successfully"
+            echo "Wrapper script created successfully"
           else
             echo "Error: Could not find texliveonfly script"
             exit 1
@@ -269,106 +272,109 @@ jobs:
         fi
         
         echo "texliveonfly installation completed"
-        echo "::endgroup::"
     
     - name: Phase 1 - Install missing packages
       shell: bash
       run: |
-        echo "Phase 1: Installing missing packages and initial compilation"
+        echo "=========================================="
+        echo "Phase 1: Installing missing packages"
+        echo "=========================================="
         
-        echo "::group::Running texliveonfly"
         texliveonfly \
           --compiler=pdflatex \
           --arguments="-interaction=nonstopmode -file-line-error -shell-escape" \
           main.tex || true
-        echo "::endgroup::"
         
         if [ ! -f "main.pdf" ]; then
-          echo "::error::texliveonfly failed to create PDF"
-          echo "::group::Error logs (last 50 lines)"
+          echo "Error: texliveonfly failed to create PDF"
+          echo "Displaying last 50 lines of log file:"
           tail -50 main.log
-          echo "::endgroup::"
           exit 1
         fi
         
-        echo "Phase 1 completed: Initial PDF generated"
+        echo ""
+        echo "Phase 1 completed successfully"
+        echo "Initial PDF generated with all packages installed"
+        echo "=========================================="
     
     - name: Phase 2 - Smart compilation with latexmk
       if: steps.check-phase2.outputs.NEEDS_PHASE2 == 'true'
       shell: bash
       run: |
-        echo "Phase 2: Smart multi-pass compilation with latexmk"
+        echo "=========================================="
+        echo "Phase 2: Smart compilation with latexmk"
+        echo "=========================================="
+        echo "Running latexmk for advanced compilation..."
+        echo ""
         
-        echo "::group::Running latexmk"
         latexmk -pdf \
           -f \
           -interaction=nonstopmode \
           -file-line-error \
           -shell-escape \
           main.tex || true
-        echo "::endgroup::"
         
         if [ ! -f "main.pdf" ]; then
-          echo "::error::latexmk failed to create PDF"
-          echo "::group::Error logs (last 50 lines)"
+          echo "Error: latexmk failed to create PDF"
+          echo "Displaying last 50 lines of log file:"
           tail -50 main.log
-          echo "::endgroup::"
           exit 1
         fi
         
-        echo "::group::Checking compilation results"
+        echo ""
+        echo "PDF generated successfully"
+        echo ""
+        echo "=========================================="
+        echo "Phase 2 completed with latexmk"
+        echo "=========================================="
+        ls -lh main.pdf
+        
         if [ -f "main.log" ]; then
+          echo ""
+          echo "Checking for warnings:"
           if grep -q -i "warning" main.log; then
-            echo "Warnings found (first 10):"
+            echo "Warnings found (showing first 10):"
             grep -i "warning" main.log | head -10
           else
             echo "No warnings found"
           fi
           
+          echo ""
+          echo "Checking for errors:"
           if grep -q "^!" main.log; then
-            echo ""
-            echo "LaTeX errors detected (first 10):"
+            echo "LaTeX errors detected (showing first 10):"
             grep "^!" main.log | head -10
             echo ""
-            echo "Note: PDF was generated despite errors"
+            echo "Note: PDF was still generated despite errors"
           else
             echo "No LaTeX errors found"
           fi
         fi
-        echo "::endgroup::"
         
-        echo "Phase 2 completed: Final PDF generated"
+        echo "=========================================="
     
-    - name: Display compilation summary
-      if: always()
+    - name: Compilation summary
       shell: bash
       run: |
         echo ""
-        echo "========================================"
+        echo "=========================================="
         echo "Compilation Summary"
-        echo "========================================"
+        echo "=========================================="
         
         if [ "${{ steps.check-phase2.outputs.NEEDS_PHASE2 }}" = "true" ]; then
           echo "Strategy: Two-phase compilation"
-          echo "  - Phase 1: texliveonfly (package installation)"
-          echo "  - Phase 2: latexmk (smart multi-pass)"
+          echo "  Phase 1: texliveonfly (package installation)"
+          echo "  Phase 2: latexmk (smart multi-pass)"
         else
           echo "Strategy: Single-phase compilation"
-          echo "  - Phase 1: texliveonfly (package installation)"
-          echo "  - Phase 2: SKIPPED (simple document)"
+          echo "  Phase 1: texliveonfly (package installation)"
+          echo "  Phase 2: SKIPPED (not needed for simple document)"
         fi
         
         echo ""
-        if [ -f "main.pdf" ]; then
-          echo "Final PDF:"
-          ls -lh main.pdf
-          
-          PDF_PAGES=$(pdfinfo main.pdf 2>/dev/null | grep "Pages:" | awk '{print $2}' || echo "unknown")
-          echo "Pages: $PDF_PAGES"
-        else
-          echo "Status: PDF generation failed"
-        fi
-        echo "========================================"
+        echo "Final PDF:"
+        ls -lh main.pdf
+        echo "=========================================="
     
     - name: Upload logs on failure
       if: failure()
@@ -384,8 +390,6 @@ jobs:
     - name: Commit PDF to repository
       shell: bash
       run: |
-        echo "::group::Committing PDF to repository"
-        
         git config --local user.email "action@github.com"
         git config --local user.name "LaTeX Compiler Bot"
         
@@ -404,7 +408,9 @@ jobs:
           
           while [ $RETRY -lt $MAX_RETRIES ]; do
             if git push; then
+              echo "=========================================="
               echo "PDF committed and pushed successfully"
+              echo "=========================================="
               SUCCESS=true
               break
             else
@@ -412,7 +418,9 @@ jobs:
               echo "Push attempt $RETRY/$MAX_RETRIES failed"
               
               if [ $RETRY -lt $MAX_RETRIES ]; then
+                echo "Waiting before retry..."
                 sleep $((RETRY * 2))
+                
                 git pull --rebase origin ${{ github.ref_name }} || {
                   echo "Error: Pull failed during retry"
                   exit 1
@@ -426,34 +434,28 @@ jobs:
             exit 1
           fi
         else
+          echo "=========================================="
           echo "No changes detected - PDF is up to date"
+          echo "=========================================="
         fi
-        
-        echo "::endgroup::"
     
-    - name: Generate GitHub Actions summary
+    - name: Generate compilation summary
       if: always()
       shell: bash
       run: |
-        echo "## Compilation Report" >> $GITHUB_STEP_SUMMARY
+        echo "## Compilation Summary" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        
-        echo "### Status" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        
-        if [ "${{ job.status }}" = "success" ]; then
-          echo "✅ **Compilation Status:** Success" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "❌ **Compilation Status:** Failed" >> $GITHUB_STEP_SUMMARY
-        fi
-        
+        echo "- **Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
         echo "- **Workflow:** LaTeX Compiler (Hybrid Approach)" >> $GITHUB_STEP_SUMMARY
         echo "- **TeX Live Version:** 2025" >> $GITHUB_STEP_SUMMARY
+        echo "- **Cache Hit:** ${{ steps.cache-texlive.outputs.cache-hit }}" >> $GITHUB_STEP_SUMMARY
         
-        if [ "${{ steps.cache-texlive.outputs.cache-hit }}" = "true" ]; then
-          echo "- **Cache:** Hit (fast build)" >> $GITHUB_STEP_SUMMARY
+        if [ -f "main.pdf" ]; then
+          PDF_SIZE=$(du -h main.pdf | cut -f1)
+          echo "- **PDF Generated:** Yes" >> $GITHUB_STEP_SUMMARY
+          echo "- **PDF Size:** $PDF_SIZE" >> $GITHUB_STEP_SUMMARY
         else
-          echo "- **Cache:** Miss (full installation)" >> $GITHUB_STEP_SUMMARY
+          echo "- **PDF Generated:** No" >> $GITHUB_STEP_SUMMARY
         fi
         
         echo "" >> $GITHUB_STEP_SUMMARY
@@ -461,54 +463,22 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         
         if [ "${{ steps.check-phase2.outputs.NEEDS_PHASE2 }}" = "true" ]; then
-          echo "**Two-Phase Compilation**" >> $GITHUB_STEP_SUMMARY
+          echo "**Two-Phase Compilation:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. Phase 1: Package installation via texliveonfly" >> $GITHUB_STEP_SUMMARY
+          echo "2. Phase 2: Smart compilation via latexmk (EXECUTED)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "1. ✅ Phase 1: Package installation (texliveonfly)" >> $GITHUB_STEP_SUMMARY
-          echo "2. ✅ Phase 2: Smart multi-pass compilation (latexmk)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "> Document contains bibliography, cross-references, or TOC" >> $GITHUB_STEP_SUMMARY
+          echo "Reason: Document contains bibliography, cross-references, or TOC" >> $GITHUB_STEP_SUMMARY
         else
-          echo "**Single-Phase Compilation**" >> $GITHUB_STEP_SUMMARY
+          echo "**Single-Phase Compilation:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. Phase 1: Package installation via texliveonfly" >> $GITHUB_STEP_SUMMARY
+          echo "2. Phase 2: Smart compilation via latexmk (SKIPPED)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "1. ✅ Phase 1: Package installation (texliveonfly)" >> $GITHUB_STEP_SUMMARY
-          echo "2. ⏭️ Phase 2: Skipped (not needed)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "> Simple document without advanced features" >> $GITHUB_STEP_SUMMARY
-        fi
-        
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### Output" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        
-        if [ -f "main.pdf" ]; then
-          PDF_SIZE=$(du -h main.pdf | cut -f1)
-          PDF_PAGES=$(pdfinfo main.pdf 2>/dev/null | grep "Pages:" | awk '{print $2}' || echo "N/A")
-          
-          echo "- **PDF File:** main.pdf" >> $GITHUB_STEP_SUMMARY
-          echo "- **File Size:** $PDF_SIZE" >> $GITHUB_STEP_SUMMARY
-          echo "- **Pages:** $PDF_PAGES" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "- **PDF File:** Not generated" >> $GITHUB_STEP_SUMMARY
+          echo "Reason: Simple document without advanced features" >> $GITHUB_STEP_SUMMARY
         fi
         
         echo "" >> $GITHUB_STEP_SUMMARY
         
         if [ -f "main.log" ]; then
-          WARNING_COUNT=$(grep -c -i "warning" main.log 2>/dev/null || echo "0")
-          ERROR_COUNT=$(grep -c "^!" main.log 2>/dev/null || echo "0")
-          
-          echo "### Diagnostics" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          WARNING_COUNT=$(grep -c -i "warning" main.log || echo "0")
           echo "- **Warnings:** $WARNING_COUNT" >> $GITHUB_STEP_SUMMARY
-          echo "- **Errors:** $ERROR_COUNT" >> $GITHUB_STEP_SUMMARY
-          
-          if [ "$ERROR_COUNT" -gt "0" ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "> ⚠️ PDF was generated despite LaTeX errors. Check logs for details." >> $GITHUB_STEP_SUMMARY
-          fi
         fi
-        
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "---" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "📅 Compiled on: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
