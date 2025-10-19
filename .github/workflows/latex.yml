@@ -160,12 +160,12 @@ jobs:
           if [ -f "$SCRIPT_PATH" ]; then
             echo "✓ Found Python script at: $SCRIPT_PATH"
             # Create wrapper script
-            cat > "$BIN_DIR/texliveonfly" << 'WRAPPER'
+            cat > "$BIN_DIR/texliveonfly" <<'EOF'
 #!/bin/bash
 YEAR=$(date +%Y)
 SCRIPT=$(find ~/texlive/$YEAR/texmf-dist/scripts/texliveonfly -name "texliveonfly.py" | head -1)
 python3 "$SCRIPT" "$@"
-WRAPPER
+EOF
             chmod +x "$BIN_DIR/texliveonfly"
             echo "✓ Created wrapper script"
           else
