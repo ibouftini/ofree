@@ -105,44 +105,6 @@ English • Français • 中文 • العربية
 
 ## 🛠️ How It Works
 
-### Architecture Overview
-
-```mermaid
-graph LR
-    A[Push Code] --> B{Changed Files?}
-    B -->|Yes| C[Detect Compiler]
-    B -->|No| D[Skip Compilation]
-    C --> E[Phase 1: Install Packages]
-    E --> F{Need Phase 2?}
-    F -->|Yes| G[Phase 2: latexmk]
-    F -->|No| H[Done]
-    G --> H
-    H --> I[Commit PDF]
-```
-
-### Two-Phase Compilation
-
-<table>
-<tr>
-<td width="50%">
-
-#### 🔹 Phase 1: Package Installation
-- `texliveonfly` detects missing packages  
-- Installs automatically via `tlmgr`
-- Generates initial PDF
-
-</td>
-<td width="50%">
-
-#### 🔹 Phase 2: Smart Compilation
-- Analyzes document complexity
-- Runs `latexmk` if bibliography/refs/TOC detected
-- Skipped for simple documents
-
-</td>
-</tr>
-</table>
-
 ### 🎯 Key Components
 
 #### 1. Change Detection
@@ -252,66 +214,7 @@ Phase 1 (texliveonfly) → Phase 2 (latexmk if needed) → Commit PDF
 </tbody>
 </table>
 
-### 💡 When to Use Each
-
-<table>
-<tr>
-<td width="50%">
-
-#### 👉 Use **xu-cheng/latex-action** if:
-- ✅ You want a quick 3-line solution
-- ✅ Single document projects
-- ✅ Don't need auto-commit
-- ✅ Prefer external maintenance
-
-</td>
-<td width="50%">
-
-#### 👉 Use **this workflow** if:
-- ✅ You want automatic PDF commits
-- ✅ Multi-document projects
-- ✅ Need smart change detection
-- ✅ Want minimal storage overhead
-
-</td>
-</tr>
-</table>
-
----
-
-## 📈 Performance Metrics
-
-### ⏱️ Compilation Time
-
-| Scenario | First Run | Cached Run |
-|----------|-----------|------------|
-| **pdflatex (simple)** | 2 min | 30-40 sec |
-| **pdflatex (with bib)** | 2-3 min | 1-2 min |
-| **xelatex (first)** | 3-4 min | 30-40 sec |
-| **xelatex (cached)** | 30-40 sec | 30-40 sec |
-
-### 💰 CI Minutes Usage
-For **100 commits/month** with cached runs:
-- **Simple documents:** ~50 minutes/month
-- **Complex documents:** ~100 minutes/month
-- **xu-cheng (no change detection):** ~100-150 minutes/month
-
-### 💾 Storage
-- **pdflatex only:** ~200 MB cache
-- **With XeLaTeX + fonts:** ~500 MB cache
-- **xu-cheng Docker:** ~4-5 GB cache
-
-**Savings: 90% less storage** 🎉
-
----
-
 ## ⚙️ Advanced Configuration
-
-### Change Default Compiler
-```yaml
-env:
-  DEFAULT_LATEX_COMPILER: xelatex  # or lualatex
-```
 
 ### Add Custom Packages
 ```yaml
