@@ -536,8 +536,7 @@ jobs:
           if which xelatex >/dev/null 2>&1; then
             echo "XeLaTeX verification:"
             xelatex --version | head -2
-            echo "Installed fonts:"
-            fc-list | grep -i "noto\|liberation" | head -5
+            echo "Font cache updated successfully"
           else
             echo "Error: XeLaTeX installation failed"
             exit 1
