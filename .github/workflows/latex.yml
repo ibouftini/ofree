@@ -319,42 +319,29 @@ jobs:
         echo "Checking TeX Live installation status..."
         echo "----------------------------------------"
         echo "Cache hit status: ${{ steps.cache-texlive.outputs.cache-hit }}"
-        echo "Cache key: texlive-2025-v5-${{ runner.os }}"
         
         YEAR=2025
         
-        echo "Checking if directory exists..."
-        ls -la $HOME/ | grep texlive || echo "No texlive directory"
-        
         if [ -d "$HOME/texlive/$YEAR" ]; then
           echo "TeX Live $YEAR directory exists"
-          ls -la "$HOME/texlive/$YEAR/" | head -20
           
           BIN_DIR=$(find "$HOME/texlive/$YEAR/bin" -type d -name "*-linux" 2>/dev/null | head -1)
           
-          if [ -n "$BIN_DIR" ]; then
-            echo "Found bin directory: $BIN_DIR"
-            ls -la "$BIN_DIR" | head -10
-            
-            if [ -f "$BIN_DIR/pdflatex" ]; then
-              echo "pdflatex found - installation is valid"
-              echo "SKIP_INSTALL=true" >> $GITHUB_OUTPUT
-              echo "BIN_DIR=$BIN_DIR" >> $GITHUB_OUTPUT
-            else
-              echo "pdflatex not found - reinstallation needed"
-              echo "SKIP_INSTALL=false" >> $GITHUB_OUTPUT
-            fi
+          if [ -n "$BIN_DIR" ] && [ -f "$BIN_DIR/pdflatex" ]; then
+            echo "Valid TeX Live installation found"
+            echo "Binary directory: $BIN_DIR"
+            echo "SKIP_INSTALL=true" >> $GITHUB_OUTPUT
+            echo "BIN_DIR=$BIN_DIR" >> $GITHUB_OUTPUT
           else
-            echo "Bin directory not found - reinstallation needed"
+            echo "Installation incomplete, will reinstall"
             echo "SKIP_INSTALL=false" >> $GITHUB_OUTPUT
           fi
         else
-          echo "TeX Live directory not found - fresh installation needed"
+          echo "TeX Live directory not found"
           echo "SKIP_INSTALL=false" >> $GITHUB_OUTPUT
         fi
         
         echo "----------------------------------------"
-        echo "SKIP_INSTALL decision: $([ -f $GITHUB_OUTPUT ] && grep SKIP_INSTALL $GITHUB_OUTPUT || echo 'not set')"
     
     - name: Install TeX Live to user directory
       if: steps.detect-changes.outputs.HAS_CHANGES == 'true' && steps.check-texlive.outputs.SKIP_INSTALL != 'true'
