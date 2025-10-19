@@ -312,10 +312,11 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/texlive
-        key: texlive-basic-2025-v4-${{ runner.os }}
+        key: texlive-2025-v4-${{ runner.os }}-xetex-${{ steps.detect-compiler.outputs.NEEDS_XELATEX }}-luatex-${{ steps.detect-compiler.outputs.NEEDS_LUALATEX }}
         restore-keys: |
-          texlive-basic-2025-v4-${{ runner.os }}-
-          texlive-basic-2025-v4-
+          texlive-2025-v4-${{ runner.os }}-xetex-${{ steps.detect-compiler.outputs.NEEDS_XELATEX }}-luatex-
+          texlive-2025-v4-${{ runner.os }}-xetex-
+          texlive-2025-v4-${{ runner.os }}-
     
     - name: Check TeX Live installation status
       if: steps.detect-changes.outputs.HAS_CHANGES == 'true'
@@ -899,12 +900,18 @@ jobs:
           echo "- **Cache Hit:** ${{ steps.cache-texlive.outputs.cache-hit }}" >> $GITHUB_STEP_SUMMARY
           
           FILES_TO_COMPILE="${{ steps.detect-changes.outputs.FILES_TO_COMPILE }}"
-          COMPILE_COUNT=$(echo "$FILES_TO_COMPILE" | wc -w)
+          
+          if [ -n "$FILES_TO_COMPILE" ]; then
+            COMPILE_COUNT=$(echo "$FILES_TO_COMPILE" | wc -w)
+          else
+            COMPILE_COUNT=0
+          fi
           
           echo "- **Files Compiled:** $COMPILE_COUNT" >> $GITHUB_STEP_SUMMARY
           
           shopt -s nullglob
-          TOTAL_PDFS=$(ls -1 *.pdf 2>/dev/null | wc -l)
+          PDF_FILES=(*.pdf)
+          TOTAL_PDFS=${#PDF_FILES[@]}
           echo "- **Total PDFs in Repository:** $TOTAL_PDFS" >> $GITHUB_STEP_SUMMARY
           
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -929,6 +936,7 @@ jobs:
           echo "### Compiled Documents" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
+          FOUND_PDFS=false
           for file in $FILES_TO_COMPILE; do
             BASENAME="${file%.tex}"
             if [ -f "${BASENAME}.pdf" ]; then
@@ -941,8 +949,13 @@ jobs:
               fi
               
               echo "- \`${BASENAME}.pdf\` ($PDF_SIZE) - compiled with **$COMPILER**" >> $GITHUB_STEP_SUMMARY
+              FOUND_PDFS=true
             fi
           done
+          
+          if [ "$FOUND_PDFS" = "false" ]; then
+            echo "No PDFs were generated in this run" >> $GITHUB_STEP_SUMMARY
+          fi
           
           echo "" >> $GITHUB_STEP_SUMMARY
           
