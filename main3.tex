@@ -1,19 +1,23 @@
 % !TeX program = xelatex
 
 \documentclass[12pt,a4paper]{article}
- 
+
 \usepackage{fontspec}
 \usepackage{polyglossia}
- 
+
 \setmainlanguage{english}
 \setotherlanguage{arabic}
 \setotherlanguage{russian}
 \setotherlanguage{greek}
 
-\setmainfont{DejaVu Serif}
-\newfontfamily\arabicfont[Script=Arabic]{DejaVu Sans}
-\newfontfamily\russianfont{DejaVu Serif}
-\newfontfamily\greekfont{DejaVu Serif}
+\setmainfont{Liberation Serif}
+
+\newfontfamily\arabicfont[Script=Arabic,Scale=1.2]{Noto Sans Arabic}
+\newfontfamily\cjkfont{Noto Sans CJK SC}
+\newfontfamily\russianfont{Liberation Serif}
+\newfontfamily\greekfont{Liberation Serif}
+
+\newcommand{\textcjk}[1]{{\cjkfont #1}}
 
 \usepackage{xcolor}
 \usepackage{geometry}
@@ -65,13 +69,13 @@ Guten Tag! Test mit deutschen Umlauten: ä, ö, ü, ß.
 \section{Asian Languages}
 
 \subsection{Chinese}
-你好世界！这是中文测试。
+\textcjk{你好世界！这是中文测试。}
 
 \subsection{Japanese}
-こんにちは世界！日本語のテストです。
+\textcjk{こんにちは世界！日本語のテストです。}
 
 \subsection{Korean}
-안녕하세요 세계! 한국어 테스트입니다.
+\textcjk{안녕하세요 세계! 한국어 테스트입니다.}
 
 \section{Special Characters and Symbols}
 
