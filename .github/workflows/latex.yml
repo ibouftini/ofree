@@ -216,12 +216,6 @@ jobs:
           
           echo "$COMPILER" > "${BASENAME}.compiler"
           echo "Compiler: $COMPILER ($DETECTION_METHOD)"
-          
-          if [ "$COMPILER" = "xelatex" ]; then
-            NEEDS_XELATEX=true
-          elif [ "$COMPILER" = "lualatex" ]; then
-            NEEDS_LUALATEX=true
-          fi
         done
         
         echo "========================================================"
@@ -312,11 +306,11 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/texlive
-        key: texlive-2025-v4-${{ runner.os }}-xetex-${{ steps.detect-compiler.outputs.NEEDS_XELATEX }}-luatex-${{ steps.detect-compiler.outputs.NEEDS_LUALATEX }}
+        key: texlive-2025-v4-${{ runner.os }}-xe${{ steps.detect-compiler.outputs.NEEDS_XELATEX }}-lua${{ steps.detect-compiler.outputs.NEEDS_LUALATEX }}
         restore-keys: |
-          texlive-2025-v4-${{ runner.os }}-xetex-${{ steps.detect-compiler.outputs.NEEDS_XELATEX }}-luatex-
-          texlive-2025-v4-${{ runner.os }}-xetex-
-          texlive-2025-v4-${{ runner.os }}-
+          texlive-2025-v4-${{ runner.os }}-xe${{ steps.detect-compiler.outputs.NEEDS_XELATEX }}-lua
+          texlive-2025-v4-${{ runner.os }}-xe${{ steps.detect-compiler.outputs.NEEDS_XELATEX }}
+          texlive-2025-v4-${{ runner.os }}
     
     - name: Check TeX Live installation status
       if: steps.detect-changes.outputs.HAS_CHANGES == 'true'
@@ -511,16 +505,17 @@ jobs:
         BIN_DIR=$(find ~/texlive/$YEAR/bin -type d -name "*-linux" | head -1)
         export PATH="$BIN_DIR:$PATH"
         
-        echo "Installing compiler-specific packages..."
+        echo "Checking compiler-specific requirements..."
         echo "----------------------------------------"
         
         NEEDS_XELATEX="${{ steps.detect-compiler.outputs.NEEDS_XELATEX }}"
         NEEDS_LUALATEX="${{ steps.detect-compiler.outputs.NEEDS_LUALATEX }}"
         
         if [ "$NEEDS_XELATEX" = "true" ]; then
-          echo "XeLaTeX required - installing XeTeX collection..."
+          echo "XeLaTeX required - checking installation..."
           
           if ! which xelatex >/dev/null 2>&1; then
+            echo "Installing XeTeX collection..."
             tlmgr install collection-xetex
             echo "XeTeX collection installed"
           else
@@ -528,16 +523,19 @@ jobs:
           fi
           
           echo "Installing XeLaTeX-specific packages..."
-          tlmgr install fontspec unicode-math polyglossia xunicode 2>/dev/null || echo "Some packages already installed"
+          tlmgr install fontspec unicode-math polyglossia xunicode 2>/dev/null || echo "Packages already installed"
           
           echo "Installing system fonts for multilingual support..."
           sudo apt-get update -qq
-          sudo apt-get install -y -qq fonts-liberation fonts-noto fonts-noto-cjk fonts-noto-cjk-extra fonts-noto-color-emoji fonts-noto-extra
+          sudo apt-get install -y -qq \
+            fonts-liberation \
+            fonts-noto fonts-noto-cjk fonts-noto-cjk-extra \
+            fonts-noto-color-emoji fonts-noto-extra
           
           if which xelatex >/dev/null 2>&1; then
             echo "XeLaTeX verification:"
             xelatex --version | head -2
-            echo "Font cache updated successfully"
+            echo "Font installation completed"
           else
             echo "Error: XeLaTeX installation failed"
             exit 1
@@ -545,9 +543,10 @@ jobs:
         fi
         
         if [ "$NEEDS_LUALATEX" = "true" ]; then
-          echo "LuaLaTeX required - installing LuaTeX collection..."
+          echo "LuaLaTeX required - checking installation..."
           
           if ! which lualatex >/dev/null 2>&1; then
+            echo "Installing LuaTeX collection..."
             tlmgr install collection-luatex
             echo "LuaTeX collection installed"
           else
@@ -555,7 +554,7 @@ jobs:
           fi
           
           echo "Installing LuaLaTeX-specific packages..."
-          tlmgr install luaotfload luatexbase luacode 2>/dev/null || echo "Some packages already installed"
+          tlmgr install luaotfload luatexbase luacode 2>/dev/null || echo "Packages already installed"
           
           if which lualatex >/dev/null 2>&1; then
             echo "LuaLaTeX verification:"
@@ -571,7 +570,7 @@ jobs:
         fi
         
         echo "----------------------------------------"
-        echo "Compiler installation completed"
+        echo "Compiler setup completed"
     
     - name: Phase 1 - Install missing packages and compile changed documents
       if: steps.detect-changes.outputs.HAS_CHANGES == 'true'
@@ -969,6 +968,12 @@ jobs:
           done
           
           echo "- **Total Warnings:** $TOTAL_WARNINGS" >> $GITHUB_STEP_SUMMARY
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Compiler Usage" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **XeLaTeX needed:** ${{ steps.detect-compiler.outputs.NEEDS_XELATEX }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **LuaLaTeX needed:** ${{ steps.detect-compiler.outputs.NEEDS_LUALATEX }}" >> $GITHUB_STEP_SUMMARY
         else
           echo "- **Action Taken:** None" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
