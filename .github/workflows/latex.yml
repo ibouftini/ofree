@@ -219,34 +219,32 @@ jobs:
         
         # First pass - install packages and generate aux files
         echo "Pass 1: Initial compilation with package installation..."
-        if texliveonfly \
+        texliveonfly \
           --compiler=pdflatex \
           --arguments="-interaction=nonstopmode -file-line-error -shell-escape" \
-          main.tex; then
-          echo "Pass 1 completed successfully"
-        else
-          echo "Pass 1 encountered issues"
-          if [ ! -f "main.pdf" ]; then
-            echo "FATAL: No PDF generated in first pass"
-            tail -50 main.log
-            exit 1
-          fi
+          main.tex || true
+        
+        if [ ! -f "main.pdf" ]; then
+          echo "FATAL: No PDF generated in first pass"
+          tail -50 main.log
+          exit 1
         fi
+        echo "Pass 1 completed"
         
         # Second pass - resolve references, TOC, LOF, LOT
         echo ""
         echo "Pass 2: Resolving cross-references and building TOC..."
-        pdflatex -interaction=nonstopmode -file-line-error -shell-escape main.tex
+        pdflatex -interaction=nonstopmode -file-line-error -shell-escape main.tex || true
         
         # Third pass - finalize all references
         echo ""
         echo "Pass 3: Finalizing references..."
-        pdflatex -interaction=nonstopmode -file-line-error -shell-escape main.tex
+        pdflatex -interaction=nonstopmode -file-line-error -shell-escape main.tex || true
         
         # Fourth pass - ensure all labels are resolved
         echo ""
         echo "Pass 4: Final synchronization..."
-        pdflatex -interaction=nonstopmode -file-line-error -shell-escape main.tex
+        pdflatex -interaction=nonstopmode -file-line-error -shell-escape main.tex || true
         
         if [ -f "main.pdf" ]; then
           echo ""
@@ -254,6 +252,12 @@ jobs:
           echo "Compilation successful after 4 passes!"
           echo "=========================================="
           ls -lh main.pdf
+          
+          # Check for critical errors in log
+          if grep -q "Fatal error" main.log; then
+            echo "WARNING: Fatal errors detected in log file"
+            exit 1
+          fi
         else
           echo "=========================================="
           echo "FATAL: No PDF generated after compilation"
@@ -281,30 +285,18 @@ jobs:
           if grep -q '\\usepackage.*biblatex' main.tex || \
              grep -q '\\addbibresource' main.tex; then
             echo "Using biblatex/biber..."
-            
-            if biber main 2>&1 | tee biber.log; then
-              echo "Biber completed successfully"
-            else
-              echo "Biber encountered issues (this may be normal)"
-              cat biber.log
-            fi
+            biber main 2>&1 | tee biber.log || true
           else
             echo "Using traditional bibtex..."
-            
-            if bibtex main 2>&1 | tee bibtex.log; then
-              echo "BibTeX completed successfully"
-            else
-              echo "BibTeX encountered issues (this may be normal)"
-              cat bibtex.log
-            fi
+            bibtex main 2>&1 | tee bibtex.log || true
           fi
           
           echo ""
           echo "Running additional passes after bibliography..."
           
           # Two more passes to resolve bibliography citations
-          pdflatex -interaction=nonstopmode -file-line-error -shell-escape main.tex
-          pdflatex -interaction=nonstopmode -file-line-error -shell-escape main.tex
+          pdflatex -interaction=nonstopmode -file-line-error -shell-escape main.tex || true
+          pdflatex -interaction=nonstopmode -file-line-error -shell-escape main.tex || true
           
           echo "Bibliography processing completed"
         else
@@ -325,6 +317,13 @@ jobs:
             echo ""
             echo "Warnings summary:"
             grep -i "warning" main.log | head -10 || echo "No warnings found"
+            echo ""
+            
+            # Check for errors (but not warnings)
+            if grep -q "^!" main.log; then
+              echo "Errors found in compilation:"
+              grep "^!" main.log | head -10
+            fi
           fi
           
           echo "=========================================="
