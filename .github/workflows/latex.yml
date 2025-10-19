@@ -5,6 +5,9 @@ on:
     paths: ['**.tex', '**.bib', '**.cls', '**.sty', '**.yml', '**.yaml']
   workflow_dispatch:
 
+env:
+  DEFAULT_LATEX_COMPILER: pdflatex
+
 jobs:
   compile:
     runs-on: ubuntu-latest
@@ -144,6 +147,92 @@ jobs:
         fi
         
         echo "========================================================"
+    
+    - name: Detect compiler for each document
+      if: steps.detect-changes.outputs.HAS_CHANGES == 'true'
+      id: detect-compiler
+      shell: bash
+      run: |
+        echo "Detecting required compiler for each document..."
+        echo "========================================================"
+        
+        FILES_TO_COMPILE="${{ steps.detect-changes.outputs.FILES_TO_COMPILE }}"
+        DEFAULT_COMPILER="${DEFAULT_LATEX_COMPILER:-pdflatex}"
+        
+        NEEDS_XELATEX=false
+        NEEDS_LUALATEX=false
+        
+        for file in $FILES_TO_COMPILE; do
+          BASENAME="${file%.tex}"
+          COMPILER="$DEFAULT_COMPILER"
+          DETECTION_METHOD="default"
+          
+          echo ""
+          echo "Analyzing: $file"
+          echo "----------------------------------------"
+          
+          EXPLICIT_DIRECTIVE=$(grep -E '^[[:space:]]*%[[:space:]]*!TeX[[:space:]]+program[[:space:]]*=' "$file" 2>/dev/null | head -1 || true)
+          
+          if [ -n "$EXPLICIT_DIRECTIVE" ]; then
+            if echo "$EXPLICIT_DIRECTIVE" | grep -qi "xelatex"; then
+              COMPILER="xelatex"
+              DETECTION_METHOD="explicit directive"
+              NEEDS_XELATEX=true
+            elif echo "$EXPLICIT_DIRECTIVE" | grep -qi "lualatex"; then
+              COMPILER="lualatex"
+              DETECTION_METHOD="explicit directive"
+              NEEDS_LUALATEX=true
+            elif echo "$EXPLICIT_DIRECTIVE" | grep -qi "pdflatex"; then
+              COMPILER="pdflatex"
+              DETECTION_METHOD="explicit directive"
+            fi
+          else
+            if grep -qE '\\usepackage(\[[^]]*\])?\{fontspec\}' "$file"; then
+              COMPILER="xelatex"
+              DETECTION_METHOD="auto-detected (fontspec package)"
+              NEEDS_XELATEX=true
+            elif grep -qE '\\usepackage(\[[^]]*\])?\{polyglossia\}' "$file"; then
+              COMPILER="xelatex"
+              DETECTION_METHOD="auto-detected (polyglossia package)"
+              NEEDS_XELATEX=true
+            elif grep -qE '\\setmainfont\{|\\setsansfont\{|\\setmonofont\{' "$file"; then
+              COMPILER="xelatex"
+              DETECTION_METHOD="auto-detected (font commands)"
+              NEEDS_XELATEX=true
+            elif grep -qE '\\usepackage(\[[^]]*\])?\{luacode\}' "$file"; then
+              COMPILER="lualatex"
+              DETECTION_METHOD="auto-detected (luacode package)"
+              NEEDS_LUALATEX=true
+            elif grep -qE '\\directlua\{' "$file"; then
+              COMPILER="lualatex"
+              DETECTION_METHOD="auto-detected (directlua command)"
+              NEEDS_LUALATEX=true
+            elif grep -qE '\\usepackage(\[[^]]*\])?\{luatextra\}' "$file"; then
+              COMPILER="lualatex"
+              DETECTION_METHOD="auto-detected (luatextra package)"
+              NEEDS_LUALATEX=true
+            fi
+          fi
+          
+          echo "$COMPILER" > "${BASENAME}.compiler"
+          echo "Compiler: $COMPILER ($DETECTION_METHOD)"
+          
+          if [ "$COMPILER" = "xelatex" ]; then
+            NEEDS_XELATEX=true
+          elif [ "$COMPILER" = "lualatex" ]; then
+            NEEDS_LUALATEX=true
+          fi
+        done
+        
+        echo "========================================================"
+        echo ""
+        echo "Compiler requirements summary:"
+        echo "  - XeLaTeX needed: $NEEDS_XELATEX"
+        echo "  - LuaLaTeX needed: $NEEDS_LUALATEX"
+        echo "========================================================"
+        
+        echo "NEEDS_XELATEX=$NEEDS_XELATEX" >> $GITHUB_OUTPUT
+        echo "NEEDS_LUALATEX=$NEEDS_LUALATEX" >> $GITHUB_OUTPUT
     
     - name: Check compilation requirements
       if: steps.detect-changes.outputs.HAS_CHANGES == 'true'
@@ -358,6 +447,16 @@ jobs:
         pdflatex --version | head -2
         echo ""
         
+        which xelatex || { echo "Error: xelatex not found"; exit 1; }
+        echo "xelatex version:"
+        xelatex --version | head -2
+        echo ""
+        
+        which lualatex || { echo "Error: lualatex not found"; exit 1; }
+        echo "lualatex version:"
+        lualatex --version | head -2
+        echo ""
+        
         which latexmk || { echo "Error: latexmk not found"; exit 1; }
         echo "latexmk version:"
         latexmk --version | head -1
@@ -413,6 +512,35 @@ jobs:
         
         echo "texliveonfly installation completed"
     
+    - name: Install compiler-specific packages
+      if: steps.detect-changes.outputs.HAS_CHANGES == 'true' && steps.cache-texlive.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        YEAR=2025
+        BIN_DIR=$(find ~/texlive/$YEAR/bin -type d -name "*-linux" | head -1)
+        export PATH="$BIN_DIR:$PATH"
+        
+        echo "Installing compiler-specific packages..."
+        echo "----------------------------------------"
+        
+        NEEDS_XELATEX="${{ steps.detect-compiler.outputs.NEEDS_XELATEX }}"
+        NEEDS_LUALATEX="${{ steps.detect-compiler.outputs.NEEDS_LUALATEX }}"
+        
+        if [ "$NEEDS_XELATEX" = "true" ]; then
+          echo "Installing XeLaTeX packages..."
+          tlmgr install fontspec unicode-math polyglossia xunicode
+          echo "XeLaTeX packages installed"
+        fi
+        
+        if [ "$NEEDS_LUALATEX" = "true" ]; then
+          echo "Installing LuaLaTeX packages..."
+          tlmgr install luaotfload luatexbase luacode
+          echo "LuaLaTeX packages installed"
+        fi
+        
+        echo "----------------------------------------"
+        echo "Compiler-specific package installation completed"
+    
     - name: Phase 1 - Install missing packages and compile changed documents
       if: steps.detect-changes.outputs.HAS_CHANGES == 'true'
       shell: bash
@@ -433,8 +561,17 @@ jobs:
           
           BASENAME="${file%.tex}"
           
+          if [ -f "${BASENAME}.compiler" ]; then
+            COMPILER=$(cat "${BASENAME}.compiler")
+          else
+            COMPILER="pdflatex"
+          fi
+          
+          echo "Using compiler: $COMPILER"
+          echo ""
+          
           texliveonfly \
-            --compiler=pdflatex \
+            --compiler="$COMPILER" \
             --arguments="-interaction=nonstopmode -file-line-error -shell-escape" \
             "$file" || true
           
@@ -501,16 +638,43 @@ jobs:
             continue
           fi
           
+          if [ -f "${BASENAME}.compiler" ]; then
+            COMPILER=$(cat "${BASENAME}.compiler")
+          else
+            COMPILER="pdflatex"
+          fi
+          
           echo "=========================================="
           echo "Running latexmk for: $file"
+          echo "Compiler: $COMPILER"
           echo "=========================================="
           
-          latexmk -pdf \
-            -f \
-            -interaction=nonstopmode \
-            -file-line-error \
-            -shell-escape \
-            "$file" || true
+          case "$COMPILER" in
+            xelatex)
+              latexmk -xelatex \
+                -f \
+                -interaction=nonstopmode \
+                -file-line-error \
+                -shell-escape \
+                "$file" || true
+              ;;
+            lualatex)
+              latexmk -lualatex \
+                -f \
+                -interaction=nonstopmode \
+                -file-line-error \
+                -shell-escape \
+                "$file" || true
+              ;;
+            *)
+              latexmk -pdf \
+                -f \
+                -interaction=nonstopmode \
+                -file-line-error \
+                -shell-escape \
+                "$file" || true
+              ;;
+          esac
           
           if [ ! -f "${BASENAME}.pdf" ]; then
             echo "Error: latexmk failed to create PDF for $file"
@@ -587,7 +751,14 @@ jobs:
           BASENAME="${file%.tex}"
           if [ -f "${BASENAME}.pdf" ]; then
             PDF_SIZE=$(du -h "${BASENAME}.pdf" | cut -f1)
-            echo "  - ${BASENAME}.pdf ($PDF_SIZE)"
+            
+            if [ -f "${BASENAME}.compiler" ]; then
+              COMPILER=$(cat "${BASENAME}.compiler")
+            else
+              COMPILER="pdflatex"
+            fi
+            
+            echo "  - ${BASENAME}.pdf ($PDF_SIZE) [compiled with $COMPILER]"
             PDF_COUNT=$((PDF_COUNT + 1))
           fi
         done
@@ -690,7 +861,7 @@ jobs:
         echo "## Compilation Summary" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "- **Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **Workflow:** LaTeX Compiler (Multi-Document with Smart Detection)" >> $GITHUB_STEP_SUMMARY
+        echo "- **Workflow:** LaTeX Compiler (Multi-Document, Multi-Compiler)" >> $GITHUB_STEP_SUMMARY
         echo "- **TeX Live Version:** 2025" >> $GITHUB_STEP_SUMMARY
         
         if [ "${{ steps.detect-changes.outputs.HAS_CHANGES }}" = "true" ]; then
@@ -731,7 +902,14 @@ jobs:
             BASENAME="${file%.tex}"
             if [ -f "${BASENAME}.pdf" ]; then
               PDF_SIZE=$(du -h "${BASENAME}.pdf" | cut -f1)
-              echo "- \`${BASENAME}.pdf\` ($PDF_SIZE)" >> $GITHUB_STEP_SUMMARY
+              
+              if [ -f "${BASENAME}.compiler" ]; then
+                COMPILER=$(cat "${BASENAME}.compiler")
+              else
+                COMPILER="pdflatex"
+              fi
+              
+              echo "- \`${BASENAME}.pdf\` ($PDF_SIZE) - compiled with **$COMPILER**" >> $GITHUB_STEP_SUMMARY
             fi
           done
           
