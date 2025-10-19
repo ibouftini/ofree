@@ -19,65 +19,99 @@ jobs:
     - name: Validate LaTeX files
       shell: bash
       run: |
-        if [ ! -f "main.tex" ]; then
-          echo "Error: main.tex not found in repository root"
+        shopt -s nullglob
+        TEX_FILES=(*.tex)
+        
+        if [ ${#TEX_FILES[@]} -eq 0 ]; then
+          echo "Error: No .tex files found in repository root"
           exit 1
         fi
-        echo "Validation successful: main.tex found"
+        
+        MAIN_COUNT=0
+        for file in "${TEX_FILES[@]}"; do
+          if grep -q '\\documentclass' "$file"; then
+            MAIN_COUNT=$((MAIN_COUNT + 1))
+            echo "Found main document: $file"
+          fi
+        done
+        
+        if [ $MAIN_COUNT -eq 0 ]; then
+          echo "Error: No main LaTeX documents found (no \\documentclass)"
+          exit 1
+        fi
+        
+        echo "Validation successful: $MAIN_COUNT main document(s) found"
     
-    - name: Check if Phase 2 is needed
+    - name: Check compilation requirements for all documents
       id: check-phase2
       shell: bash
       run: |
-        NEEDS_PHASE2=false
-        
-        echo "Analyzing main.tex to determine compilation strategy..."
+        echo "Analyzing documents to determine compilation strategy..."
         echo "========================================================"
         
-        # Check for bibliography/citations in source
-        if grep -qE '\\bibliography\{|\\addbibresource\{|\\printbibliography|\\cite\{|\\citep\{|\\citet\{' main.tex; then
-          echo "[CHECK] Bibliography/Citations: FOUND"
-          NEEDS_PHASE2=true
-        else
-          echo "[CHECK] Bibliography/Citations: NOT FOUND"
-        fi
+        shopt -s nullglob
+        NEEDS_PHASE2_GLOBAL=false
         
-        # Check for cross-references in source
-        if grep -qE '\\ref\{|\\pageref\{|\\eqref\{|\\label\{' main.tex; then
-          echo "[CHECK] Cross-references (ref/label): FOUND"
-          NEEDS_PHASE2=true
-        else
-          echo "[CHECK] Cross-references (ref/label): NOT FOUND"
-        fi
+        for file in *.tex; do
+          if ! grep -q '\\documentclass' "$file"; then
+            continue
+          fi
+          
+          echo ""
+          echo "Analyzing: $file"
+          echo "----------------------------------------"
+          
+          NEEDS_PHASE2=false
+          
+          if grep -qE '\\bibliography\{|\\addbibresource\{|\\printbibliography|\\cite\{|\\citep\{|\\citet\{' "$file"; then
+            echo "[CHECK] Bibliography/Citations: FOUND"
+            NEEDS_PHASE2=true
+          else
+            echo "[CHECK] Bibliography/Citations: NOT FOUND"
+          fi
+          
+          if grep -qE '\\ref\{|\\pageref\{|\\eqref\{|\\label\{' "$file"; then
+            echo "[CHECK] Cross-references: FOUND"
+            NEEDS_PHASE2=true
+          else
+            echo "[CHECK] Cross-references: NOT FOUND"
+          fi
+          
+          if grep -qE '\\tableofcontents|\\listoffigures|\\listoftables' "$file"; then
+            echo "[CHECK] TOC/LOF/LOT: FOUND"
+            NEEDS_PHASE2=true
+          else
+            echo "[CHECK] TOC/LOF/LOT: NOT FOUND"
+          fi
+          
+          BASENAME="${file%.tex}"
+          if [ "$NEEDS_PHASE2" = "true" ]; then
+            echo "DECISION: Phase 2 required for $file"
+            echo "true" > "${BASENAME}.phase2"
+            NEEDS_PHASE2_GLOBAL=true
+          else
+            echo "DECISION: Phase 2 not needed for $file"
+            echo "false" > "${BASENAME}.phase2"
+          fi
+        done
         
-        # Check for table of contents
-        if grep -qE '\\tableofcontents|\\listoffigures|\\listoftables' main.tex; then
-          echo "[CHECK] TOC/LOF/LOT: FOUND"
-          NEEDS_PHASE2=true
-        else
-          echo "[CHECK] TOC/LOF/LOT: NOT FOUND"
-        fi
-        
-        # Check if .bib files exist
         if ls *.bib >/dev/null 2>&1; then
+          echo ""
           echo "[CHECK] Bibliography files (.bib): FOUND"
-          NEEDS_PHASE2=true
-        else
-          echo "[CHECK] Bibliography files (.bib): NOT FOUND"
+          NEEDS_PHASE2_GLOBAL=true
         fi
         
         echo "========================================================"
+        echo ""
         
-        if [ "$NEEDS_PHASE2" = "true" ]; then
-          echo ""
-          echo "DECISION: Phase 2 (latexmk) is REQUIRED"
-          echo "Reason: Document contains features requiring multiple passes"
-          echo "NEEDS_PHASE2=true" >> $GITHUB_OUTPUT
+        if [ "$NEEDS_PHASE2_GLOBAL" = "true" ]; then
+          echo "GLOBAL DECISION: Phase 2 capability is REQUIRED"
+          echo "At least one document needs multiple compilation passes"
+          echo "NEEDS_PHASE2_GLOBAL=true" >> $GITHUB_OUTPUT
         else
-          echo ""
-          echo "DECISION: Phase 2 (latexmk) is NOT NEEDED"
-          echo "Reason: Document is simple, Phase 1 PDF is sufficient"
-          echo "NEEDS_PHASE2=false" >> $GITHUB_OUTPUT
+          echo "GLOBAL DECISION: Phase 2 capability is NOT NEEDED"
+          echo "All documents are simple, Phase 1 is sufficient"
+          echo "NEEDS_PHASE2_GLOBAL=false" >> $GITHUB_OUTPUT
         fi
         
         echo "========================================================"
@@ -273,107 +307,192 @@ jobs:
         
         echo "texliveonfly installation completed"
     
-    - name: Phase 1 - Install missing packages
+    - name: Phase 1 - Install missing packages and compile all documents
       shell: bash
       run: |
         echo "=========================================="
-        echo "Phase 1: Installing missing packages"
+        echo "Phase 1: Installing packages and initial compilation"
         echo "=========================================="
+        echo ""
         
-        texliveonfly \
-          --compiler=pdflatex \
-          --arguments="-interaction=nonstopmode -file-line-error -shell-escape" \
-          main.tex || true
+        shopt -s nullglob
+        COMPILED_COUNT=0
+        FAILED_COUNT=0
         
-        if [ ! -f "main.pdf" ]; then
-          echo "Error: texliveonfly failed to create PDF"
-          echo "Displaying last 50 lines of log file:"
-          tail -50 main.log
+        for file in *.tex; do
+          if ! grep -q '\\documentclass' "$file"; then
+            echo "Skipping $file - not a main document"
+            continue
+          fi
+          
+          echo "=========================================="
+          echo "Compiling: $file"
+          echo "=========================================="
+          
+          BASENAME="${file%.tex}"
+          
+          texliveonfly \
+            --compiler=pdflatex \
+            --arguments="-interaction=nonstopmode -file-line-error -shell-escape" \
+            "$file" || true
+          
+          if [ ! -f "${BASENAME}.pdf" ]; then
+            echo "Error: texliveonfly failed to create PDF for $file"
+            echo "Displaying last 50 lines of log file:"
+            tail -50 "${BASENAME}.log" 2>/dev/null || echo "No log file found"
+            FAILED_COUNT=$((FAILED_COUNT + 1))
+            continue
+          fi
+          
+          PDF_SIZE=$(du -h "${BASENAME}.pdf" | cut -f1)
+          echo "Phase 1 completed for $file - PDF generated: ${BASENAME}.pdf ($PDF_SIZE)"
+          COMPILED_COUNT=$((COMPILED_COUNT + 1))
+          echo ""
+        done
+        
+        echo "=========================================="
+        echo "Phase 1 Summary"
+        echo "=========================================="
+        echo "Successfully compiled: $COMPILED_COUNT document(s)"
+        echo "Failed: $FAILED_COUNT document(s)"
+        echo "=========================================="
+        echo ""
+        
+        if [ $COMPILED_COUNT -eq 0 ]; then
+          echo "Error: No documents were successfully compiled in Phase 1"
           exit 1
         fi
         
-        echo ""
-        echo "Phase 1 completed successfully"
-        echo "Initial PDF generated with all packages installed"
-        echo "=========================================="
+        echo "PHASE1_COMPILED=$COMPILED_COUNT" >> $GITHUB_ENV
+        echo "PHASE1_FAILED=$FAILED_COUNT" >> $GITHUB_ENV
     
     - name: Phase 2 - Smart compilation with latexmk
-      if: steps.check-phase2.outputs.NEEDS_PHASE2 == 'true'
+      if: steps.check-phase2.outputs.NEEDS_PHASE2_GLOBAL == 'true'
       shell: bash
       run: |
         echo "=========================================="
         echo "Phase 2: Smart compilation with latexmk"
         echo "=========================================="
-        echo "Running latexmk for advanced compilation..."
         echo ""
         
-        latexmk -pdf \
-          -f \
-          -interaction=nonstopmode \
-          -file-line-error \
-          -shell-escape \
-          main.tex || true
+        shopt -s nullglob
+        PHASE2_COUNT=0
+        SKIPPED_COUNT=0
         
-        if [ ! -f "main.pdf" ]; then
-          echo "Error: latexmk failed to create PDF"
-          echo "Displaying last 50 lines of log file:"
-          tail -50 main.log
-          exit 1
-        fi
-        
-        echo ""
-        echo "PDF generated successfully"
-        echo ""
-        echo "=========================================="
-        echo "Phase 2 completed with latexmk"
-        echo "=========================================="
-        ls -lh main.pdf
-        
-        if [ -f "main.log" ]; then
-          echo ""
-          echo "Checking for warnings:"
-          if grep -q -i "warning" main.log; then
-            echo "Warnings found (showing first 10):"
-            grep -i "warning" main.log | head -10
+        for file in *.tex; do
+          if ! grep -q '\\documentclass' "$file"; then
+            continue
+          fi
+          
+          BASENAME="${file%.tex}"
+          
+          if [ ! -f "${BASENAME}.pdf" ]; then
+            echo "Skipping $file - Phase 1 compilation failed"
+            continue
+          fi
+          
+          if [ -f "${BASENAME}.phase2" ]; then
+            NEEDS_PHASE2=$(cat "${BASENAME}.phase2")
           else
-            echo "No warnings found"
+            NEEDS_PHASE2=false
+          fi
+          
+          if [ "$NEEDS_PHASE2" = "false" ]; then
+            echo "Skipping Phase 2 for $file - not needed"
+            SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+            continue
+          fi
+          
+          echo "=========================================="
+          echo "Running latexmk for: $file"
+          echo "=========================================="
+          
+          latexmk -pdf \
+            -f \
+            -interaction=nonstopmode \
+            -file-line-error \
+            -shell-escape \
+            "$file" || true
+          
+          if [ ! -f "${BASENAME}.pdf" ]; then
+            echo "Error: latexmk failed to create PDF for $file"
+            echo "Displaying last 50 lines of log file:"
+            tail -50 "${BASENAME}.log" 2>/dev/null || echo "No log file found"
+            continue
+          fi
+          
+          PDF_SIZE=$(du -h "${BASENAME}.pdf" | cut -f1)
+          echo "Phase 2 completed for $file - Final PDF: ${BASENAME}.pdf ($PDF_SIZE)"
+          PHASE2_COUNT=$((PHASE2_COUNT + 1))
+          
+          if [ -f "${BASENAME}.log" ]; then
+            echo ""
+            echo "Checking for warnings in ${BASENAME}.log:"
+            if grep -q -i "warning" "${BASENAME}.log"; then
+              echo "Warnings found (showing first 10):"
+              grep -i "warning" "${BASENAME}.log" | head -10
+            else
+              echo "No warnings found"
+            fi
+            
+            echo ""
+            echo "Checking for errors in ${BASENAME}.log:"
+            if grep -q "^!" "${BASENAME}.log"; then
+              echo "LaTeX errors detected (showing first 10):"
+              grep "^!" "${BASENAME}.log" | head -10
+              echo ""
+              echo "Note: PDF was still generated despite errors"
+            else
+              echo "No LaTeX errors found"
+            fi
           fi
           
           echo ""
-          echo "Checking for errors:"
-          if grep -q "^!" main.log; then
-            echo "LaTeX errors detected (showing first 10):"
-            grep "^!" main.log | head -10
-            echo ""
-            echo "Note: PDF was still generated despite errors"
-          else
-            echo "No LaTeX errors found"
-          fi
-        fi
+        done
         
         echo "=========================================="
+        echo "Phase 2 Summary"
+        echo "=========================================="
+        echo "Processed with latexmk: $PHASE2_COUNT document(s)"
+        echo "Skipped (not needed): $SKIPPED_COUNT document(s)"
+        echo "=========================================="
+        
+        echo "PHASE2_PROCESSED=$PHASE2_COUNT" >> $GITHUB_ENV
+        echo "PHASE2_SKIPPED=$SKIPPED_COUNT" >> $GITHUB_ENV
     
     - name: Compilation summary
       shell: bash
       run: |
         echo ""
         echo "=========================================="
-        echo "Compilation Summary"
+        echo "Final Compilation Summary"
         echo "=========================================="
         
-        if [ "${{ steps.check-phase2.outputs.NEEDS_PHASE2 }}" = "true" ]; then
+        if [ "${{ steps.check-phase2.outputs.NEEDS_PHASE2_GLOBAL }}" = "true" ]; then
           echo "Strategy: Two-phase compilation"
           echo "  Phase 1: texliveonfly (package installation)"
           echo "  Phase 2: latexmk (smart multi-pass)"
         else
           echo "Strategy: Single-phase compilation"
           echo "  Phase 1: texliveonfly (package installation)"
-          echo "  Phase 2: SKIPPED (not needed for simple document)"
+          echo "  Phase 2: SKIPPED (not needed for any document)"
         fi
         
         echo ""
-        echo "Final PDF:"
-        ls -lh main.pdf
+        echo "Generated PDFs:"
+        
+        shopt -s nullglob
+        PDF_COUNT=0
+        for pdf in *.pdf; do
+          PDF_SIZE=$(du -h "$pdf" | cut -f1)
+          echo "  - $pdf ($PDF_SIZE)"
+          PDF_COUNT=$((PDF_COUNT + 1))
+        done
+        
+        if [ $PDF_COUNT -eq 0 ]; then
+          echo "  No PDFs generated"
+        fi
+        
         echo "=========================================="
     
     - name: Upload logs on failure
@@ -387,7 +506,7 @@ jobs:
           *.blg
         retention-days: 7
     
-    - name: Commit PDF to repository
+    - name: Commit PDFs to repository
       shell: bash
       run: |
         git config --local user.email "action@github.com"
@@ -397,10 +516,13 @@ jobs:
           echo "Warning: Pull failed, attempting to continue"
         }
         
-        git add main.pdf
+        git add *.pdf
         
         if ! git diff --staged --quiet; then
-          git commit -m "Auto-compile LaTeX: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          shopt -s nullglob
+          PDF_COUNT=$(ls -1 *.pdf 2>/dev/null | wc -l)
+          
+          git commit -m "Auto-compile LaTeX: $PDF_COUNT document(s) - $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
           
           MAX_RETRIES=3
           RETRY=0
@@ -409,7 +531,7 @@ jobs:
           while [ $RETRY -lt $MAX_RETRIES ]; do
             if git push; then
               echo "=========================================="
-              echo "PDF committed and pushed successfully"
+              echo "PDFs committed and pushed successfully"
               echo "=========================================="
               SUCCESS=true
               break
@@ -435,7 +557,7 @@ jobs:
           fi
         else
           echo "=========================================="
-          echo "No changes detected - PDF is up to date"
+          echo "No changes detected - PDFs are up to date"
           echo "=========================================="
         fi
     
@@ -446,39 +568,57 @@ jobs:
         echo "## Compilation Summary" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "- **Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **Workflow:** LaTeX Compiler (Hybrid Approach)" >> $GITHUB_STEP_SUMMARY
+        echo "- **Workflow:** LaTeX Compiler (Multi-Document)" >> $GITHUB_STEP_SUMMARY
         echo "- **TeX Live Version:** 2025" >> $GITHUB_STEP_SUMMARY
         echo "- **Cache Hit:** ${{ steps.cache-texlive.outputs.cache-hit }}" >> $GITHUB_STEP_SUMMARY
         
-        if [ -f "main.pdf" ]; then
-          PDF_SIZE=$(du -h main.pdf | cut -f1)
-          echo "- **PDF Generated:** Yes" >> $GITHUB_STEP_SUMMARY
-          echo "- **PDF Size:** $PDF_SIZE" >> $GITHUB_STEP_SUMMARY
+        shopt -s nullglob
+        PDF_COUNT=$(ls -1 *.pdf 2>/dev/null | wc -l)
+        
+        if [ $PDF_COUNT -gt 0 ]; then
+          echo "- **PDFs Generated:** $PDF_COUNT" >> $GITHUB_STEP_SUMMARY
         else
-          echo "- **PDF Generated:** No" >> $GITHUB_STEP_SUMMARY
+          echo "- **PDFs Generated:** 0" >> $GITHUB_STEP_SUMMARY
         fi
         
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Compilation Strategy" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         
-        if [ "${{ steps.check-phase2.outputs.NEEDS_PHASE2 }}" = "true" ]; then
+        if [ "${{ steps.check-phase2.outputs.NEEDS_PHASE2_GLOBAL }}" = "true" ]; then
           echo "**Two-Phase Compilation:**" >> $GITHUB_STEP_SUMMARY
           echo "1. Phase 1: Package installation via texliveonfly" >> $GITHUB_STEP_SUMMARY
           echo "2. Phase 2: Smart compilation via latexmk (EXECUTED)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Reason: Document contains bibliography, cross-references, or TOC" >> $GITHUB_STEP_SUMMARY
+          echo "Reason: One or more documents contain bibliography, cross-references, or TOC" >> $GITHUB_STEP_SUMMARY
         else
           echo "**Single-Phase Compilation:**" >> $GITHUB_STEP_SUMMARY
           echo "1. Phase 1: Package installation via texliveonfly" >> $GITHUB_STEP_SUMMARY
           echo "2. Phase 2: Smart compilation via latexmk (SKIPPED)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Reason: Simple document without advanced features" >> $GITHUB_STEP_SUMMARY
+          echo "Reason: All documents are simple without advanced features" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Generated Documents" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ $PDF_COUNT -gt 0 ]; then
+          for pdf in *.pdf; do
+            PDF_SIZE=$(du -h "$pdf" | cut -f1)
+            echo "- \`$pdf\` ($PDF_SIZE)" >> $GITHUB_STEP_SUMMARY
+          done
+        else
+          echo "No PDFs were generated" >> $GITHUB_STEP_SUMMARY
         fi
         
         echo "" >> $GITHUB_STEP_SUMMARY
         
-        if [ -f "main.log" ]; then
-          WARNING_COUNT=$(grep -c -i "warning" main.log || echo "0")
-          echo "- **Warnings:** $WARNING_COUNT" >> $GITHUB_STEP_SUMMARY
-        fi
+        TOTAL_WARNINGS=0
+        for log in *.log; do
+          [ -f "$log" ] || continue
+          WARNING_COUNT=$(grep -c -i "warning" "$log" 2>/dev/null || echo "0")
+          TOTAL_WARNINGS=$((TOTAL_WARNINGS + WARNING_COUNT))
+        done
+        
+        echo "- **Total Warnings:** $TOTAL_WARNINGS" >> $GITHUB_STEP_SUMMARY
