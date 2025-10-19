@@ -1,6 +1,4 @@
-# 📄 LaTeX Compiler Workflow
-
-> **Automatic LaTeX compilation on GitHub with intelligent change detection, multi-compiler support, and zero configuration.**
+# 📄 Ofree : Automatic LaTeX compilation
 
 [![GitHub Actions](https://img.shields.io/badge/GitHub-Actions-2088FF?logo=github-actions&logoColor=white)](https://github.com/features/actions)
 [![TeX Live 2025](https://img.shields.io/badge/TeX%20Live-2025-3D6117?logo=latex&logoColor=white)](https://tug.org/texlive/)
