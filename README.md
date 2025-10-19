@@ -1,66 +1,83 @@
-# LaTeX Compiler Workflow
+# 📄 LaTeX Compiler Workflow
 
-Automatic LaTeX compilation on GitHub with intelligent change detection, multi-compiler support, and zero configuration.
+> **Automatic LaTeX compilation on GitHub with intelligent change detection, multi-compiler support, and zero configuration.**
 
-## Quick Start
+[![GitHub Actions](https://img.shields.io/badge/GitHub-Actions-2088FF?logo=github-actions&logoColor=white)](https://github.com/features/actions)
+[![TeX Live 2025](https://img.shields.io/badge/TeX%20Live-2025-3D6117?logo=latex&logoColor=white)](https://tug.org/texlive/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-1. **Fork this repository**
-2. **Enable GitHub Actions write permissions:**
-   - Go to `Settings` → `Actions` → `General`
-   - Scroll to "Workflow permissions"
-   - Select "Read and write permissions"
-   - Click "Save"
-3. **Start writing LaTeX:**
-   - Edit `main.tex` or create new `.tex` files
-   - Commit and push
-   - Your PDFs appear automatically in the repository
+---
 
-That's it! No configuration needed.
+## 🚀 Quick Start
 
-## Features
+Get your LaTeX documents compiling automatically in **3 simple steps**:
 
-### Automatic PDF Generation
-Write LaTeX, push to GitHub, get PDFs. The workflow compiles your documents and commits them back to your repository automatically.
+### 1️⃣ Fork this repository
 
-### Multi-Document Support
-Place multiple `.tex` files in the root directory. Each main document (containing `\documentclass`) compiles independently.
+Click the **Fork** button at the top right of this page.
 
-### Smart Change Detection
-Only modified documents recompile. Edit one file in a 10-document project, and only that file rebuilds. Saves time and CI minutes.
+### 2️⃣ Enable write permissions
 
-### Multi-Compiler Support
-Use **pdflatex**, **xelatex**, or **lualatex** with a single line:
+Navigate to your fork's settings:
 
-```latex
-% !TeX program = xelatex
-\documentclass{article}
-...
+```
+Settings → Actions → General → Workflow permissions
 ```
 
-Or let it auto-detect from packages:
-- `fontspec` → XeLaTeX
-- `luacode` → LuaLaTeX
-- Default → pdflatex
+Select **"Read and write permissions"** → Click **Save**
 
-### Automatic Package Management
-Missing a LaTeX package? The workflow installs it automatically. No manual package lists needed.
+### 3️⃣ Start writing LaTeX
 
-### Intelligent Compilation
-Simple documents compile in one pass. Documents with bibliographies, cross-references, or table of contents automatically get multiple compilation passes via latexmk.
+Edit `main.tex` or create new `.tex` files, commit, and push. Watch your PDFs appear automatically! ✨
 
-### Efficient Caching
-TeX Live installation cached (~200 MB). Subsequent runs complete in ~30 seconds instead of minutes.
+---
 
-## Usage Examples
+## ✨ Features
+
+<table>
+<tr>
+<td width="50%">
+
+### 🔄 Automatic PDF Generation
+Write LaTeX, push to GitHub, get PDFs. Documents compile and commit automatically—no manual builds needed.
+
+### 📚 Multi-Document Support  
+Multiple `.tex` files? No problem. Each main document compiles independently, in parallel workflows.
+
+### ⚡ Smart Change Detection
+Only modified documents recompile. Edit 1 file in a 10-document project → only that file rebuilds. **Saves time and CI minutes.**
+
+</td>
+<td width="50%">
+
+### 🌍 Multi-Compiler Support
+Switch between **pdflatex**, **xelatex**, or **lualatex** with one line. Auto-detection from packages included.
+
+### 📦 Automatic Package Management
+Missing packages? Installed automatically. No configuration files, no package lists—it just works.
+
+### 🧠 Intelligent Compilation
+Simple docs compile once. Complex docs with bibliographies or cross-references get multiple passes automatically via latexmk.
+
+</td>
+</tr>
+</table>
+
+### 💾 Efficient Caching
+TeX Live installation cached (~200 MB). Subsequent runs complete in **~30 seconds** instead of minutes.
+
+---
+
+## 📖 Usage Examples
 
 ### Basic Document (pdflatex)
 ```latex
 \documentclass{article}
 \begin{document}
-Hello World
+Hello World! 🌍
 \end{document}
 ```
-Compiles with pdflatex automatically.
+> ✅ Compiles with pdflatex automatically
 
 ### Multilingual Document (XeLaTeX)
 ```latex
@@ -69,163 +86,303 @@ Compiles with pdflatex automatically.
 \usepackage{fontspec}
 \setmainfont{Noto Serif}
 \begin{document}
-English, Français, 中文, العربية
+English • Français • 中文 • العربية
 \end{document}
 ```
-Compiles with XeLaTeX, installs fonts automatically.
+> ✅ Compiles with XeLaTeX, installs fonts automatically
 
 ### Multiple Documents
 ```
-repository/
-├── main.tex          → main.pdf
-├── appendix.tex      → appendix.pdf
-└── slides.tex        → slides.pdf
+📁 repository/
+├── 📄 main.tex          → main.pdf
+├── 📄 appendix.tex      → appendix.pdf
+└── 📄 slides.tex        → slides.pdf
 ```
-All compile independently when changed.
+> ✅ All compile independently when changed
 
-## How It Works
+---
 
-### Workflow Architecture
+## 🛠️ How It Works
 
-The workflow uses a two-phase compilation strategy:
+### Architecture Overview
 
-**Phase 1: Package Installation**
-- `texliveonfly` detects missing packages
-- Installs them automatically via `tlmgr`
+```mermaid
+graph LR
+    A[Push Code] --> B{Changed Files?}
+    B -->|Yes| C[Detect Compiler]
+    B -->|No| D[Skip Compilation]
+    C --> E[Phase 1: Install Packages]
+    E --> F{Need Phase 2?}
+    F -->|Yes| G[Phase 2: latexmk]
+    F -->|No| H[Done]
+    G --> H
+    H --> I[Commit PDF]
+```
+
+### Two-Phase Compilation
+
+<table>
+<tr>
+<td width="50%">
+
+#### 🔹 Phase 1: Package Installation
+- `texliveonfly` detects missing packages  
+- Installs automatically via `tlmgr`
 - Generates initial PDF
 
-**Phase 2: Smart Compilation (conditional)**
-- Analyzes document for advanced features
-- Runs `latexmk` if bibliography, cross-references, or TOC detected
+</td>
+<td width="50%">
+
+#### 🔹 Phase 2: Smart Compilation
+- Analyzes document complexity
+- Runs `latexmk` if bibliography/refs/TOC detected
 - Skipped for simple documents
 
-### Key Steps
+</td>
+</tr>
+</table>
 
-1. **Change Detection**
-   - Git diff analysis
-   - Checks main files, included files, bibliography files, style files
-   - Only compiles affected documents
+### 🎯 Key Components
 
-2. **Compiler Detection**
-   - Priority 1: `% !TeX program =` directive
-   - Priority 2: Package analysis (fontspec → xelatex, luacode → lualatex)
-   - Priority 3: Default to pdflatex
-
-3. **Caching Strategy**
-   - TeX Live base installation cached
-   - Compilers (XeLaTeX/LuaLaTeX) installed on-demand and cached
-   - System fonts cached for XeLaTeX
-   - Single cache for all compiler types
-
-4. **Compilation Process**
-   ```
-   Change detected → Determine compiler → Phase 1 (texliveonfly) 
-   → Phase 2 if needed (latexmk) → Commit PDF
-   ```
-
-### File Structure
-
-```
-.github/workflows/
-└── latex-compiler.yml    # Main workflow (single file)
-
-Repository root:
-├── *.tex                 # Your LaTeX documents
-├── *.bib                 # Bibliography files
-├── *.cls, *.sty          # Custom classes/styles
-└── *.pdf                 # Generated PDFs (auto-committed)
+#### 1. Change Detection
+```yaml
+Git diff → Check main files, includes, bib files, styles → Compile affected only
 ```
 
-### Modifying the Workflow
+#### 2. Compiler Detection  
+| Priority | Method | Example |
+|----------|--------|---------|
+| 1️⃣ | Explicit directive | `% !TeX program = xelatex` |
+| 2️⃣ | Package analysis | `fontspec` → xelatex |
+| 3️⃣ | Default | pdflatex |
 
-**Change default compiler:**
+#### 3. Caching Strategy
+```
+📦 Cache: ~/texlive/2025 + ~/.fonts
+🔑 Key: texlive-fonts-2025-v5-Linux
+💾 Size: 200 MB (pdflatex) | 500 MB (with XeLaTeX)
+⚡ Strategy: Incremental (compilers added on-demand)
+```
+
+#### 4. Compilation Flow
+```bash
+Change detected → Determine compiler → Cache TeX Live → 
+Phase 1 (texliveonfly) → Phase 2 (latexmk if needed) → Commit PDF
+```
+
+---
+
+## 📊 Comparison with xu-cheng/latex-action
+
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th align="center">xu-cheng/latex-action</th>
+<th align="center">This Workflow</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><b>Approach</b></td>
+<td align="center">🐳 Docker container</td>
+<td align="center">⚙️ Native installation</td>
+</tr>
+<tr>
+<td><b>Setup</b></td>
+<td align="center">3 lines in workflow</td>
+<td align="center">Fork + enable permissions</td>
+</tr>
+<tr>
+<td><b>Package Management</b></td>
+<td align="center">❌ Manual specification</td>
+<td align="center">✅ Automatic detection</td>
+</tr>
+<tr>
+<td><b>Multi-document</b></td>
+<td align="center">⚠️ Manual loop required</td>
+<td align="center">✅ Built-in support</td>
+</tr>
+<tr>
+<td><b>Compiler Detection</b></td>
+<td align="center">❌ Manual specification</td>
+<td align="center">✅ Auto via directive/packages</td>
+</tr>
+<tr>
+<td><b>Change Detection</b></td>
+<td align="center">❌ None (compiles all)</td>
+<td align="center">✅ Smart (changed files only)</td>
+</tr>
+<tr>
+<td><b>Auto-commit PDF</b></td>
+<td align="center">❌ No</td>
+<td align="center">✅ Yes (built-in)</td>
+</tr>
+<tr>
+<td><b>Caching</b></td>
+<td align="center">4-5 GB (Docker layers)</td>
+<td align="center">200-500 MB (TeX Live)</td>
+</tr>
+<tr>
+<td><b>First Run</b></td>
+<td align="center">⏱️ 2-3 min</td>
+<td align="center">⏱️ 2-3 min</td>
+</tr>
+<tr>
+<td><b>Cached Run</b></td>
+<td align="center">⏱️ 1-2 min</td>
+<td align="center">⚡ 30 sec</td>
+</tr>
+<tr>
+<td><b>Storage Overhead</b></td>
+<td align="center">💾 4-5 GB</td>
+<td align="center">💾 200-500 MB</td>
+</tr>
+<tr>
+<td><b>Customization</b></td>
+<td align="center">⚠️ Limited to inputs</td>
+<td align="center">✅ Full workflow editing</td>
+</tr>
+<tr>
+<td><b>Maintenance</b></td>
+<td align="center">✅ External (xu-cheng)</td>
+<td align="center">⚙️ Self-contained</td>
+</tr>
+</tbody>
+</table>
+
+### 💡 When to Use Each
+
+<table>
+<tr>
+<td width="50%">
+
+#### 👉 Use **xu-cheng/latex-action** if:
+- ✅ You want a quick 3-line solution
+- ✅ Single document projects
+- ✅ Don't need auto-commit
+- ✅ Prefer external maintenance
+
+</td>
+<td width="50%">
+
+#### 👉 Use **this workflow** if:
+- ✅ You want automatic PDF commits
+- ✅ Multi-document projects
+- ✅ Need smart change detection
+- ✅ Want minimal storage overhead
+
+</td>
+</tr>
+</table>
+
+---
+
+## 📈 Performance Metrics
+
+### ⏱️ Compilation Time
+
+| Scenario | First Run | Cached Run |
+|----------|-----------|------------|
+| **pdflatex (simple)** | 2 min | 30-40 sec |
+| **pdflatex (with bib)** | 2-3 min | 1-2 min |
+| **xelatex (first)** | 3-4 min | 30-40 sec |
+| **xelatex (cached)** | 30-40 sec | 30-40 sec |
+
+### 💰 CI Minutes Usage
+For **100 commits/month** with cached runs:
+- **Simple documents:** ~50 minutes/month
+- **Complex documents:** ~100 minutes/month
+- **xu-cheng (no change detection):** ~100-150 minutes/month
+
+### 💾 Storage
+- **pdflatex only:** ~200 MB cache
+- **With XeLaTeX + fonts:** ~500 MB cache
+- **xu-cheng Docker:** ~4-5 GB cache
+
+**Savings: 90% less storage** 🎉
+
+---
+
+## ⚙️ Advanced Configuration
+
+### Change Default Compiler
 ```yaml
 env:
   DEFAULT_LATEX_COMPILER: xelatex  # or lualatex
 ```
 
-**Add custom packages to base installation:**
+### Add Custom Packages
 ```yaml
 - name: Install TeX Live
   run: |
     $BIN_DIR/tlmgr install \
       latexmk amsmath graphics \
-      your-package-here
+      your-custom-package
 ```
 
-**Adjust cache version (force fresh install):**
+### Force Fresh Installation
 ```yaml
-key: texlive-fonts-2025-v6-${{ runner.os }}  # increment v5 → v6
+key: texlive-fonts-2025-v6-${{ runner.os }}  # increment version
 ```
 
-## Comparison with xu-cheng/latex-action
+---
 
-| Feature | xu-cheng/latex-action | This Workflow |
-|---------|----------------------|---------------|
-| **Approach** | Docker container | Native installation |
-| **Setup** | 3 lines in workflow file | Fork + enable permissions |
-| **Package Management** | Manual specification | Automatic detection |
-| **Multi-document** | Manual loop required | Built-in support |
-| **Compiler Detection** | Manual specification | Automatic via directive/packages |
-| **Change Detection** | None (compiles all) | Smart (compiles only changed) |
-| **Auto-commit PDF** | No (manual setup) | Yes (built-in) |
-| **Caching** | Docker layers (4-5 GB) | TeX Live (200-500 MB) |
-| **First Run** | ~2-3 min | ~2-3 min |
-| **Cached Run** | ~1-2 min | ~30 sec |
-| **Storage** | 4-5 GB | 200-500 MB |
-| **Customization** | Limited to action inputs | Full workflow editing |
-| **Maintenance** | External dependency | Self-contained |
+## 📋 Requirements
 
-**Use xu-cheng if:** You want a quick 3-line solution and don't need auto-commit or multi-document support.
+| Requirement | Description |
+|-------------|-------------|
+| 🔐 **Write Permissions** | Enable in Actions settings |
+| 📁 **Root Directory** | `.tex` files must be in repository root |
+| 📄 **Document Class** | Files must contain `\documentclass` |
 
-**Use this workflow if:** You want automatic PDF commits, multi-document compilation, smart change detection, and minimal storage overhead.
+---
 
-## Technical Details
+## ⚠️ Limitations
 
-### Cache Strategy
-- **Key:** `texlive-fonts-2025-v5-Linux`
-- **Paths:** `~/texlive/2025`, `~/.fonts`
-- **Size:** ~200 MB (pdflatex only), ~500 MB (with XeLaTeX/fonts)
-- **Incremental:** Compilers installed on-demand into same cache
+- 📁 Documents must be in repository root (not subdirectories)
+- 📦 Binary PDFs committed to repository (may bloat git history)
+- 🔍 Requires `\documentclass` to detect main documents
 
-### Compilation Time
-- **pdflatex (simple doc):** 30-40s cached, 2 min first run
-- **pdflatex (with bib):** 1-2 min cached, 2-3 min first run  
-- **xelatex (first run):** 3-4 min (includes font installation)
-- **xelatex (cached):** 30-40s
+---
 
-### CI Minutes Usage
-For 100 commits/month with cached runs:
-- Simple docs: ~50 minutes/month
-- Complex docs: ~100 minutes/month
+## 🤝 Contributing
 
-Compare to xu-cheng: ~100-150 minutes/month (no change detection)
+Contributions welcome! This workflow is **self-contained in a single YAML file**, making it easy to fork and modify.
 
-## Requirements
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Open a Pull Request
 
-- GitHub repository with LaTeX files
-- Write permissions enabled for GitHub Actions
-- `.tex` files in repository root (not subdirectories)
+---
 
-## Limitations
+## 📜 License
 
-- Documents must be in repository root
-- No support for subdirectory compilation
-- Binary output (PDFs) committed to repository (may bloat git history)
-- Requires `\documentclass` to detect main documents
+**MIT License** - Feel free to use and modify for your projects.
 
-## Contributing
+---
 
-Contributions welcome! This workflow is self-contained in a single YAML file, making it easy to fork and modify.
+## 🙏 Credits
 
-## License
+Built with amazing open-source tools:
 
-MIT License - Feel free to use and modify for your projects.
+| Tool | Description |
+|------|-------------|
+| [TeX Live](https://tug.org/texlive/) | Comprehensive TeX system |
+| [texliveonfly](https://ctan.org/pkg/texliveonfly) | Automatic package installation |
+| [latexmk](https://ctan.org/pkg/latexmk) | Smart compilation automation |
+| [GitHub Actions](https://github.com/features/actions) | CI/CD platform |
 
-## Credits
+---
 
-Built with:
-- [TeX Live](https://tug.org/texlive/) - Comprehensive TeX system
-- [texliveonfly](https://ctan.org/pkg/texliveonfly) - Automatic package installation
-- [latexmk](https://ctan.org/pkg/latexmk) - Smart compilation automation
-- [GitHub Actions](https://github.com/features/actions) - CI/CD platform
+<div align="center">
+
+### ⭐ Star this repository if you find it useful!
+
+**Made with ❤️ for the LaTeX community**
+
+[Report Bug](../../issues) · [Request Feature](../../issues) · [Discussions](../../discussions)
+
+</div>
