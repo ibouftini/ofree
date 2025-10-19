@@ -27,7 +27,11 @@ Select **"Read and write permissions"** → Click **Save**
 
 Edit `main.tex` or create new `.tex` files, commit, and push. Watch your PDFs appear automatically! ✨
 
----
+Consider that the first compilation takes ~1mins so that packages can be installed.
+
+Later compilations use cached files from the first one!
+
+
 
 ## ✨ Features
 
