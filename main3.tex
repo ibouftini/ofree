@@ -9,11 +9,15 @@
  
 \setmainfont{Noto Serif}
 \setsansfont{Noto Sans} 
-\setmonofont{Noto Sans Mono}  
- 
+\setmonofont{Noto Sans Mono}
+
+\newfontfamily\cyrillicfont{Noto Serif}
+\newfontfamily\greekfont{Noto Serif}
 \newfontfamily\arabicfont[Script=Arabic]{Noto Sans Arabic}
 \newfontfamily\cjkfont{Noto Sans CJK SC}
 
+\newcommand{\textcyrillic}[1]{{\cyrillicfont #1}}
+\newcommand{\textgreek}[1]{{\greekfont #1}}
 \newcommand{\textarabic}[1]{{\arabicfont\textdir TRT #1}}
 \newcommand{\textcjk}[1]{{\cjkfont #1}} 
 
@@ -50,15 +54,17 @@ Olá mundo! Teste com acentuação: ã, õ, â, ê, ô, à, ç.
 Ciao mondo! Test con caratteri accentati: à, è, é, ì, ò, ù.
 
 \subsection{Russian}
-Привет мир! Это тест кириллицы: а, б, в, г, д, е, ё, ж, з, и, й, к.
+\textcyrillic{Привет мир! Это тест кириллицы: а, б, в, г, д, е, ё, ж, з, и, й, к.}
 
 \subsection{Greek}
-Γεια σου κόσμε! Ελληνικά γράμματα: α, β, γ, δ, ε, ζ, η, θ, λ, μ, π, σ, ω.
+\textgreek{Γεια σου κόσμε! Ελληνικά γράμματα: α, β, γ, δ, ε, ζ, η, θ, λ, μ, π, σ, ω.}
 
 \section{Middle Eastern Languages}
 
 \subsection{Arabic}
 \textarabic{مرحبا بالعالم! هذا اختبار للغة العربية.}
+
+Arabic (right-to-left): \textarabic{العربية}
 
 \section{East Asian Languages}
 
@@ -79,7 +85,7 @@ Ciao mondo! Test con caratteri accentati: à, è, é, ì, ò, ù.
 \subsection{Mathematical Symbols}
 Mathematical symbols work naturally: ∀x ∈ ℝ, ∃y ∈ ℂ, ∞, ∑, ∏, ∫, ∂
 
-Greek letters: α, β, γ, δ, ε, ζ, η, θ, λ, μ, π, σ, τ, φ, χ, ψ, ω
+Greek letters in math mode: \textgreek{α, β, γ, δ, ε, ζ, η, θ, λ, μ, π, σ, τ, φ, χ, ψ, ω}
 
 \subsection{Currency Symbols}
 Currency symbols: \$, €, £, ¥, ₹, ₽, ₩, ₪
@@ -162,9 +168,9 @@ Combined: \textcolor{red}{\textbf{bold red text}} and \textcolor{blue}{\textit{i
 
 English, Français, Deutsch, Español all together.
 
-Latin with Greek: The symbol π (pi) represents 3.14159...
+Latin with Greek: The symbol \textgreek{π} (pi) represents 3.14159...
 
-Numbers in different scripts: 123 (Western), \textcjk{一二三} (Chinese)
+Numbers in different scripts: 123 (Western), \textcjk{一二三} (Chinese), \textarabic{١٢٣} (Arabic)
 
 \section{Conclusion}
 
