@@ -15,13 +15,15 @@
 \usepackage{tikz}
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.17}
-\usetikzlibrary{shapes.geometric, arrows.meta, calc, patterns, positioning, decorations.pathmorphing}
+\usetikzlibrary{shapes.geometric, arrows.meta, calc, patterns, positioning, decorations.pathmorphing, decorations.markings, 3d, shadows, backgrounds}
 
 % Tables
 \usepackage{booktabs}
 \usepackage{multirow}
 \usepackage{array}
 \usepackage{longtable}
+\usepackage{colortbl}
+\usepackage{tabularx}
 
 % Algorithms
 \usepackage{algorithm}
@@ -57,6 +59,29 @@
 \usepackage{subcaption}
 \usepackage{float}
 \usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage{footmisc}
+\usepackage{fancyhdr}
+\usepackage{lipsum}
+\usepackage{soul} % for highlighting
+\usepackage{ulem} % for underlining
+\usepackage{cancel} % for canceling in equations
+\usepackage{siunitx} % for SI units
+
+% Chemistry
+\usepackage{chemfig}
+\usepackage{mhchem}
+
+% Advanced math
+\usepackage{mathrsfs}
+\usepackage{dsfont}
+
+% Fancy headers
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\leftmark}
+\fancyhead[R]{\thepage}
+\fancyfoot[C]{Comprehensive LaTeX Test Document}
 
 % Theorem environments
 \theoremstyle{definition}
@@ -66,17 +91,26 @@
 \newtheorem{proposition}[theorem]{Proposition}
 \newtheorem{corollary}[theorem]{Corollary}
 \newtheorem{remark}{Remark}[section]
+\newtheorem{example}{Example}[section]
 
 % Custom commands
 \newcommand{\E}{\mathbb{E}}
 \newcommand{\R}{\mathbb{R}}
 \newcommand{\N}{\mathcal{N}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\Q}{\mathbb{Q}}
 \newcommand{\KL}{\text{KL}}
 \newcommand{\ELBO}{\text{ELBO}}
 \DeclareMathOperator{\Var}{Var}
+\DeclareMathOperator{\Cov}{Cov}
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\diag}{diag}
 
-\title{\Large \textbf{Denoising Diffusion Probabilistic Models (DDPM):\\A Comprehensive Mathematical Treatment}}
-\author{LaTeX Functionality Test Document\\Inspired by "What are Diffusion Models?" by Lilian Weng}
+\title{\Huge \textbf{Comprehensive LaTeX Functionality Test}\\[0.5cm]
+\Large Testing All Major LaTeX Features and Packages}
+\author{GitHub Actions LaTeX Compiler Test\\[0.2cm]
+\texttt{github-actions@compiler.test}}
 \date{\today}
 
 \begin{document}
@@ -84,644 +118,1202 @@
 \maketitle
 
 \begin{abstract}
-This document provides a comprehensive mathematical treatment of Denoising Diffusion Probabilistic Models (DDPMs), demonstrating various LaTeX functionalities including complex mathematics, algorithms, visualizations, tables, and code listings. We explore the theoretical foundations, derive key equations, and implement core algorithms while showcasing LaTeX's typesetting capabilities.
+This document serves as a comprehensive test suite for LaTeX compilation, testing mathematics, algorithms, visualizations (TikZ/PGFPlots), tables, code listings, chemistry notation, 3D graphics, complex formatting, cross-references, footnotes, bibliography support, and various advanced LaTeX packages. This ensures the GitHub Actions workflow can handle real-world LaTeX documents.
 \end{abstract}
 
 \tableofcontents
+\listoffigures
+\listoftables
 \newpage
 
-\section{Introduction}
+\section{Advanced Mathematics}
 
-Diffusion models are a class of generative models that learn to gradually denoise data by reversing a diffusion process. Given data distribution $q(\mathbf{x}_0)$, we define a \textit{forward diffusion process} that gradually adds Gaussian noise over $T$ timesteps:
+\subsection{Complex Equations}
 
-\begin{equation}
-    q(\mathbf{x}_t | \mathbf{x}_{t-1}) = \N(\mathbf{x}_t; \sqrt{1-\beta_t}\mathbf{x}_{t-1}, \beta_t\mathbf{I})
-    \label{eq:forward_step}
-\end{equation}
-
-where $\{\beta_t\}_{t=1}^T$ is a variance schedule with $\beta_t \in (0,1)$.
-
-\subsection{Key Contributions}
-
-The main contributions of DDPM can be summarized as:
-
-\begin{itemize}[leftmargin=*]
-    \item \textbf{Simplified training objective}: Connection to denoising score matching
-    \item \textbf{Reparameterization}: Efficient sampling of $\mathbf{x}_t$ at any timestep
-    \item \textbf{Variance schedule}: Careful design of noise scheduling
-\end{itemize}
-
-\section{Mathematical Foundation}
-
-\subsection{Forward Process Properties}
-
-\begin{theorem}[Closed-form Forward Process]
-    Let $\alpha_t = 1 - \beta_t$ and $\bar{\alpha}_t = \prod_{i=1}^t \alpha_i$. Then:
-    \begin{equation}
-        q(\mathbf{x}_t | \mathbf{x}_0) = \N(\mathbf{x}_t; \sqrt{\bar{\alpha}_t}\mathbf{x}_0, (1-\bar{\alpha}_t)\mathbf{I})
-        \label{eq:forward_closed}
-    \end{equation}
-\end{theorem}
-
-\begin{proof}
-    We proceed by induction. For $t=1$:
-    \begin{align}
-        q(\mathbf{x}_1 | \mathbf{x}_0) &= \N(\mathbf{x}_1; \sqrt{\alpha_1}\mathbf{x}_0, \beta_1\mathbf{I}) \\
-        &= \N(\mathbf{x}_1; \sqrt{\bar{\alpha}_1}\mathbf{x}_0, (1-\bar{\alpha}_1)\mathbf{I})
-    \end{align}
-    
-    Assume true for $t-1$. Using the reparameterization trick:
-    \begin{align}
-        \mathbf{x}_{t-1} &= \sqrt{\bar{\alpha}_{t-1}}\mathbf{x}_0 + \sqrt{1-\bar{\alpha}_{t-1}}\bm{\epsilon}_{t-1} \\
-        \mathbf{x}_t &= \sqrt{\alpha_t}\mathbf{x}_{t-1} + \sqrt{1-\alpha_t}\bm{\epsilon}_t
-    \end{align}
-    
-    Substituting and using independence of $\bm{\epsilon}_{t-1}, \bm{\epsilon}_t \sim \N(0, \mathbf{I})$:
-    \begin{align}
-        \mathbf{x}_t &= \sqrt{\alpha_t}(\sqrt{\bar{\alpha}_{t-1}}\mathbf{x}_0 + \sqrt{1-\bar{\alpha}_{t-1}}\bm{\epsilon}_{t-1}) + \sqrt{1-\alpha_t}\bm{\epsilon}_t \\
-        &= \sqrt{\alpha_t\bar{\alpha}_{t-1}}\mathbf{x}_0 + \sqrt{\alpha_t(1-\bar{\alpha}_{t-1})}\bm{\epsilon}_{t-1} + \sqrt{1-\alpha_t}\bm{\epsilon}_t \\
-        &= \sqrt{\bar{\alpha}_t}\mathbf{x}_0 + \sqrt{1-\bar{\alpha}_t}\bm{\epsilon}
-    \end{align}
-    where $\bm{\epsilon} \sim \N(0, \mathbf{I})$ by properties of Gaussian distributions.
-\end{proof}
-
-\subsection{Reverse Process}
-
-The reverse process is parameterized as:
-\begin{equation}
-    p_\theta(\mathbf{x}_{t-1} | \mathbf{x}_t) = \N(\mathbf{x}_{t-1}; \bm{\mu}_\theta(\mathbf{x}_t, t), \sigma_t^2\mathbf{I})
-\end{equation}
-
-\begin{definition}[Posterior Distribution]
-    The posterior distribution $q(\mathbf{x}_{t-1} | \mathbf{x}_t, \mathbf{x}_0)$ is tractable:
-    \begin{equation}
-        q(\mathbf{x}_{t-1} | \mathbf{x}_t, \mathbf{x}_0) = \N(\mathbf{x}_{t-1}; \tilde{\bm{\mu}}_t(\mathbf{x}_t, \mathbf{x}_0), \tilde{\beta}_t\mathbf{I})
-    \end{equation}
-    where:
-    \begin{align}
-        \tilde{\bm{\mu}}_t(\mathbf{x}_t, \mathbf{x}_0) &= \frac{\sqrt{\bar{\alpha}_{t-1}}\beta_t}{1-\bar{\alpha}_t}\mathbf{x}_0 + \frac{\sqrt{\alpha_t}(1-\bar{\alpha}_{t-1})}{1-\bar{\alpha}_t}\mathbf{x}_t \\
-        \tilde{\beta}_t &= \frac{1-\bar{\alpha}_{t-1}}{1-\bar{\alpha}_t}\beta_t
-    \end{align}
-\end{definition}
-
-\section{Training Objective}
-
-\subsection{Variational Lower Bound}
-
-The variational lower bound (VLB) on the log-likelihood is:
+Testing multi-line equations with alignment:
 
 \begin{align}
-    \log p_\theta(\mathbf{x}_0) &\geq \E_q\left[\log p_\theta(\mathbf{x}_0|\mathbf{x}_1) - \sum_{t=2}^T D_{\KL}(q(\mathbf{x}_{t-1}|\mathbf{x}_t,\mathbf{x}_0) \| p_\theta(\mathbf{x}_{t-1}|\mathbf{x}_t))\right] \nonumber \\
-    &\quad - D_{\KL}(q(\mathbf{x}_T|\mathbf{x}_0) \| p(\mathbf{x}_T))
-    \label{eq:vlb}
+    \oint_C \mathbf{F} \cdot d\mathbf{r} &= \iint_S (\nabla \times \mathbf{F}) \cdot d\mathbf{S} \label{eq:stokes} \\
+    \nabla \cdot \mathbf{E} &= \frac{\rho}{\epsilon_0} \label{eq:gauss} \\
+    \nabla \times \mathbf{B} &= \mu_0\mathbf{J} + \mu_0\epsilon_0\frac{\partial \mathbf{E}}{\partial t} \label{eq:ampere}
 \end{align}
 
-\subsection{Simplified Objective}
+Testing equation cancellation and highlighting:
+\begin{equation}
+    \cancel{\frac{x^2}{x}} \cdot \frac{y^3}{y^2} = x \cdot y
+\end{equation}
 
-\begin{proposition}[Denoising Objective]
-    The training objective can be simplified to:
-    \begin{equation}
-        \mathcal{L}_{\text{simple}} = \E_{t,\mathbf{x}_0,\bm{\epsilon}}\left[\|\bm{\epsilon} - \bm{\epsilon}_\theta(\mathbf{x}_t, t)\|^2\right]
-        \label{eq:simple_loss}
-    \end{equation}
-    where $\mathbf{x}_t = \sqrt{\bar{\alpha}_t}\mathbf{x}_0 + \sqrt{1-\bar{\alpha}_t}\bm{\epsilon}$ and $\bm{\epsilon} \sim \N(0, \mathbf{I})$.
-\end{proposition}
+\subsection{Matrix Operations}
 
-\section{Algorithms}
+Block matrices and determinants:
+\begin{equation}
+    \det\begin{bmatrix}
+        \mathbf{A} & \mathbf{B} \\
+        \mathbf{C} & \mathbf{D}
+    \end{bmatrix} = \det(\mathbf{A})\det(\mathbf{D} - \mathbf{C}\mathbf{A}^{-1}\mathbf{B})
+\end{equation}
 
-\subsection{Training Algorithm}
+Eigenvector equation:
+\begin{equation}
+    \mathbf{A}\mathbf{v} = \lambda\mathbf{v} \implies \det(\mathbf{A} - \lambda\mathbf{I}) = 0
+\end{equation}
 
-\begin{algorithm}[H]
-\caption{DDPM Training}
-\label{alg:ddpm_train}
-\begin{algorithmic}[1]
-\Repeat
-    \State $\mathbf{x}_0 \sim q(\mathbf{x}_0)$ \Comment{Sample from data distribution}
-    \State $t \sim \text{Uniform}(\{1, \ldots, T\})$ \Comment{Sample timestep}
-    \State $\bm{\epsilon} \sim \N(0, \mathbf{I})$ \Comment{Sample noise}
-    \State $\mathbf{x}_t = \sqrt{\bar{\alpha}_t}\mathbf{x}_0 + \sqrt{1-\bar{\alpha}_t}\bm{\epsilon}$ \Comment{Add noise}
-    \State Take gradient step on:
-    \State \quad $\nabla_\theta \|\bm{\epsilon} - \bm{\epsilon}_\theta(\mathbf{x}_t, t)\|^2$
-\Until{converged}
-\end{algorithmic}
-\end{algorithm}
+\subsection{Special Functions}
 
-\subsection{Sampling Algorithm}
+Testing special mathematical symbols:
+\begin{align}
+    \Gamma(n) &= (n-1)! \quad \text{for } n \in \mathbb{N}^+ \\
+    \zeta(s) &= \sum_{n=1}^{\infty} \frac{1}{n^s} \quad \text{for } \Re(s) > 1 \\
+    \mathcal{F}\{f(t)\} &= \int_{-\infty}^{\infty} f(t)e^{-2\pi i \xi t}\,dt
+\end{align}
 
-\begin{algorithm}[H]
-\caption{DDPM Sampling}
-\label{alg:ddpm_sample}
-\begin{algorithmic}[1]
-\State $\mathbf{x}_T \sim \N(0, \mathbf{I})$
-\For{$t = T, T-1, \ldots, 1$}
-    \State $\mathbf{z} \sim \N(0, \mathbf{I})$ if $t > 1$, else $\mathbf{z} = 0$
-    \State $\bm{\mu}_\theta = \frac{1}{\sqrt{\alpha_t}}\left(\mathbf{x}_t - \frac{\beta_t}{\sqrt{1-\bar{\alpha}_t}}\bm{\epsilon}_\theta(\mathbf{x}_t, t)\right)$
-    \State $\mathbf{x}_{t-1} = \bm{\mu}_\theta + \sigma_t\mathbf{z}$
-\EndFor
-\State \Return $\mathbf{x}_0$
-\end{algorithmic}
-\end{algorithm}
+\subsection{Advanced Calculus}
 
-\section{Variance Schedules}
+Multivariable calculus with gradients:
+\begin{equation}
+    \nabla f = \frac{\partial f}{\partial x}\mathbf{i} + \frac{\partial f}{\partial y}\mathbf{j} + \frac{\partial f}{\partial z}\mathbf{k}
+\end{equation}
 
-Different variance schedules affect model performance significantly:
+Chain rule in multiple dimensions:
+\begin{equation}
+    \frac{\partial z}{\partial u} = \frac{\partial z}{\partial x}\frac{\partial x}{\partial u} + \frac{\partial z}{\partial y}\frac{\partial y}{\partial u}
+\end{equation}
+
+\subsection{Statistical Distributions}
+
+\begin{definition}[Multivariate Gaussian]
+A $d$-dimensional multivariate Gaussian distribution is defined as:
+\begin{equation}
+    p(\mathbf{x}) = \frac{1}{(2\pi)^{d/2}|\mathbf{\Sigma}|^{1/2}} \exp\left(-\frac{1}{2}(\mathbf{x}-\bm{\mu})^T\mathbf{\Sigma}^{-1}(\mathbf{x}-\bm{\mu})\right)
+\end{equation}
+\end{definition}
+
+\subsection{Set Theory and Logic}
+
+Testing logical symbols:
+\begin{align}
+    \forall x \in \mathbb{R}, \exists y \in \mathbb{R} &: x < y \\
+    A \cap B &= \{x : x \in A \land x \in B\} \\
+    A \cup B &= \{x : x \in A \lor x \in B\} \\
+    A \setminus B &= \{x : x \in A \land x \notin B\}
+\end{align}
+
+\section{Chemistry Notation}
+
+\subsection{Chemical Formulas}
+
+Using mhchem package:
+\begin{equation}
+    \ce{CO2 + C -> 2CO}
+\end{equation}
+
+\begin{equation}
+    \ce{Zn^2+ <=>[+ 2OH-][+ 2H+] $\underset{\text{amphoteric hydroxide}}{\ce{Zn(OH)2 v}}$ <=>[+ 2OH-][+ 2H+] $\underset{\text{tetrahydroxozincate}}{\ce{[Zn(OH)4]^2-}}$}
+\end{equation}
+
+Reaction with arrows:
+\begin{equation}
+    \ce{H2O <=> H+ + OH-}
+\end{equation}
+
+\subsection{Structural Chemistry}
+
+Using chemfig package:
+\begin{center}
+\chemfig{H-C(-[2]H)(-[6]H)-C(=[1]O)-O-H}
+\quad (Acetic Acid)
+\end{center}
+
+\begin{center}
+\chemfig{*6(-=-(-NH_2)=-=)}
+\quad (Aniline)
+\end{center}
+
+\section{Units and Measurements}
+
+Using siunitx package for proper SI units:
+
+\begin{itemize}
+    \item Temperature: \SI{25}{\celsius} or \SI{298.15}{\kelvin}
+    \item Energy: \SI{6.626e-34}{\joule\second}
+    \item Speed: \SI{3e8}{\meter\per\second}
+    \item Concentration: \SI{1.5}{\mol\per\liter}
+    \item Angle: \ang{45;30;30}
+\end{itemize}
+
+\section{Complex Tables}
+
+\subsection{Multi-row and Multi-column Tables}
 
 \begin{table}[H]
 \centering
-\caption{Common Variance Schedules in DDPM}
-\label{tab:schedules}
-\begin{tabular}{@{}lll@{}}
+\caption{Advanced Table with Multiple Features}
+\label{tab:advanced}
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\rowcolor{gray!30}
+\multirow{2}{*}{\textbf{Model}} & \multicolumn{2}{c|}{\textbf{Accuracy (\%)}} & \multicolumn{2}{c|}{\textbf{Time (ms)}} \\
+\cline{2-5}
+\rowcolor{gray!30}
+ & Train & Test & Forward & Backward \\
+\hline
+ResNet-50 & 95.2 & 92.8 & 23.4 & 45.6 \\
+\rowcolor{blue!10}
+VGG-16 & 93.8 & 91.2 & 34.5 & 67.8 \\
+MobileNet & 89.4 & 87.6 & 12.3 & 18.9 \\
+\rowcolor{green!10}
+EfficientNet & \textbf{96.7} & \textbf{94.3} & 18.2 & 32.1 \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Long Table Spanning Multiple Pages}
+
+\begin{longtable}{|l|r|r|p{6cm}|}
+\caption{Long Table Example} \label{tab:long} \\
+\hline
+\textbf{ID} & \textbf{Value 1} & \textbf{Value 2} & \textbf{Description} \\
+\hline
+\endfirsthead
+
+\multicolumn{4}{c}%
+{{\tablename\ \thetable{} -- continued from previous page}} \\
+\hline
+\textbf{ID} & \textbf{Value 1} & \textbf{Value 2} & \textbf{Description} \\
+\hline
+\endhead
+
+\hline \multicolumn{4}{r}{{Continued on next page}} \\
+\endfoot
+
+\hline
+\endlastfoot
+
+1 & 123 & 456 & This is a long description to test paragraph wrapping in tables \\
+2 & 789 & 012 & Another entry with substantial text content \\
+3 & 345 & 678 & Testing multi-line cell content in longtable environment \\
+4 & 901 & 234 & More data rows for comprehensive testing \\
+5 & 567 & 890 & Additional entries to demonstrate pagination \\
+\end{longtable}
+
+\section{Advanced TikZ Graphics}
+
+\subsection{3D Graphics}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[scale=1.5]
+    % 3D coordinate system
+    \draw[->] (0,0,0) -- (4,0,0) node[right] {$x$};
+    \draw[->] (0,0,0) -- (0,4,0) node[above] {$y$};
+    \draw[->] (0,0,0) -- (0,0,4) node[below left] {$z$};
+    
+    % 3D surface representation
+    \foreach \z in {0,0.5,...,3}{
+        \draw[blue, opacity=0.3] plot[domain=0:3, smooth] (\x, {sin(\x*180/3.14)*exp(-\z/3)}, \z);
+    }
+    
+    \node at (2,-1,-1) {3D Damped Sine Wave};
+\end{tikzpicture}
+\caption{3D Graphics with TikZ}
+\label{fig:3d}
+\end{figure}
+
+\subsection{Neural Network Diagram}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    node distance=2cm,
+    neuron/.style={circle, draw, minimum size=0.8cm, fill=blue!20},
+    layer/.style={rectangle, draw, minimum width=1.5cm, minimum height=3cm, fill=gray!20}
+]
+    % Input layer
+    \foreach \i in {1,2,3,4} {
+        \node[neuron] (input\i) at (0, -\i*0.8) {};
+    }
+    \node[above=0.1cm of input1] {Input Layer};
+    
+    % Hidden layer 1
+    \foreach \i in {1,2,3,4,5} {
+        \node[neuron, fill=green!20] (hidden1\i) at (3, -\i*0.7+0.5) {};
+    }
+    \node[above=0.1cm of hidden11] {Hidden Layer 1};
+    
+    % Hidden layer 2
+    \foreach \i in {1,2,3,4} {
+        \node[neuron, fill=orange!20] (hidden2\i) at (6, -\i*0.8) {};
+    }
+    \node[above=0.1cm of hidden21] {Hidden Layer 2};
+    
+    % Output layer
+    \foreach \i in {1,2} {
+        \node[neuron, fill=red!20] (output\i) at (9, -\i*1.5) {};
+    }
+    \node[above=0.1cm of output1] {Output Layer};
+    
+    % Connections (sample)
+    \foreach \i in {1,2,3,4} {
+        \foreach \j in {1,2,3,4,5} {
+            \draw[->, very thin, gray] (input\i) -- (hidden1\j);
+        }
+    }
+    
+    \foreach \i in {1,2,3,4,5} {
+        \foreach \j in {1,2,3,4} {
+            \draw[->, very thin, gray] (hidden1\i) -- (hidden2\j);
+        }
+    }
+    
+    \foreach \i in {1,2,3,4} {
+        \foreach \j in {1,2} {
+            \draw[->, very thin, gray] (hidden2\i) -- (output\j);
+        }
+    }
+\end{tikzpicture}
+\caption{Deep Neural Network Architecture}
+\label{fig:nn}
+\end{figure}
+
+\subsection{Flowchart}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    node distance=1.5cm,
+    startstop/.style={rectangle, rounded corners, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=red!30},
+    process/.style={rectangle, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=blue!30},
+    decision/.style={diamond, minimum width=3cm, minimum height=1cm, text centered, draw=black, fill=green!30},
+    arrow/.style={thick,->,>=stealth}
+]
+    \node (start) [startstop] {Start};
+    \node (input) [process, below of=start] {Input Data};
+    \node (check) [decision, below of=input, yshift=-0.5cm] {Valid?};
+    \node (process1) [process, below of=check, yshift=-1cm] {Process Data};
+    \node (process2) [process, right of=check, xshift=3cm] {Error Handling};
+    \node (output) [process, below of=process1] {Output Results};
+    \node (stop) [startstop, below of=output] {End};
+    
+    \draw [arrow] (start) -- (input);
+    \draw [arrow] (input) -- (check);
+    \draw [arrow] (check) -- node[anchor=east] {Yes} (process1);
+    \draw [arrow] (check) -- node[anchor=south] {No} (process2);
+    \draw [arrow] (process2) |- (input);
+    \draw [arrow] (process1) -- (output);
+    \draw [arrow] (output) -- (stop);
+\end{tikzpicture}
+\caption{Data Processing Flowchart}
+\label{fig:flowchart}
+\end{figure}
+
+\subsection{Complex PGFPlots}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=12cm,
+    height=7cm,
+    xlabel={$x$},
+    ylabel={$y$},
+    zlabel={$f(x,y)$},
+    title={3D Surface Plot},
+    view={45}{30},
+    grid=major,
+    colormap/viridis
+]
+\addplot3[
+    surf,
+    domain=-3:3,
+    domain y=-3:3,
+    samples=30,
+] {exp(-(x^2+y^2)/5) * cos(deg(sqrt(x^2+y^2)))};
+\end{axis}
+\end{tikzpicture}
+\caption{3D Surface Plot using PGFPlots}
+\label{fig:3dplot}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=12cm,
+    height=6cm,
+    xlabel={Epoch},
+    ylabel={Metric},
+    legend pos=north east,
+    grid=major,
+    title={Training Metrics Comparison}
+]
+% Training accuracy
+\addplot[blue, thick, mark=*] coordinates {
+    (0,0.5) (1,0.65) (2,0.72) (3,0.78) (4,0.82) 
+    (5,0.85) (6,0.87) (7,0.89) (8,0.90) (9,0.91) (10,0.92)
+};
+\addlegendentry{Train Accuracy}
+
+% Validation accuracy
+\addplot[red, thick, mark=square*] coordinates {
+    (0,0.48) (1,0.62) (2,0.68) (3,0.73) (4,0.76) 
+    (5,0.78) (6,0.79) (7,0.80) (8,0.805) (9,0.81) (10,0.812)
+};
+\addlegendentry{Val Accuracy}
+
+% Training loss
+\addplot[green, thick, mark=triangle*] coordinates {
+    (0,2.3) (1,1.5) (2,1.1) (3,0.8) (4,0.6) 
+    (5,0.45) (6,0.35) (7,0.28) (8,0.23) (9,0.20) (10,0.18)
+};
+\addlegendentry{Train Loss}
+\end{axis}
+\end{tikzpicture}
+\caption{Multi-metric Training Curves}
+\label{fig:metrics}
+\end{figure}
+
+\section{Advanced Algorithms}
+
+\subsection{Recursive Algorithm}
+
+\begin{algorithm}[H]
+\caption{Merge Sort}
+\label{alg:mergesort}
+\begin{algorithmic}[1]
+\Function{MergeSort}{$A, p, r$}
+    \If{$p < r$}
+        \State $q \gets \lfloor (p + r) / 2 \rfloor$
+        \State \Call{MergeSort}{$A, p, q$}
+        \State \Call{MergeSort}{$A, q+1, r$}
+        \State \Call{Merge}{$A, p, q, r$}
+    \EndIf
+\EndFunction
+\State
+\Function{Merge}{$A, p, q, r$}
+    \State $n_1 \gets q - p + 1$
+    \State $n_2 \gets r - q$
+    \State Create arrays $L[1..n_1+1]$ and $R[1..n_2+1]$
+    \For{$i \gets 1$ \textbf{to} $n_1$}
+        \State $L[i] \gets A[p + i - 1]$
+    \EndFor
+    \For{$j \gets 1$ \textbf{to} $n_2$}
+        \State $R[j] \gets A[q + j]$
+    \EndFor
+    \State $L[n_1+1] \gets \infty$
+    \State $R[n_2+1] \gets \infty$
+    \State $i \gets 1$, $j \gets 1$
+    \For{$k \gets p$ \textbf{to} $r$}
+        \If{$L[i] \leq R[j]$}
+            \State $A[k] \gets L[i]$
+            \State $i \gets i + 1$
+        \Else
+            \State $A[k] \gets R[j]$
+            \State $j \gets j + 1$
+        \EndIf
+    \EndFor
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Dynamic Programming}
+
+\begin{algorithm}[H]
+\caption{Longest Common Subsequence}
+\label{alg:lcs}
+\begin{algorithmic}[1]
+\Function{LCS}{$X, Y$}
+    \State $m \gets |X|$, $n \gets |Y|$
+    \State Create table $c[0..m, 0..n]$
+    \For{$i \gets 0$ \textbf{to} $m$}
+        \State $c[i, 0] \gets 0$
+    \EndFor
+    \For{$j \gets 0$ \textbf{to} $n$}
+        \State $c[0, j] \gets 0$
+    \EndFor
+    \For{$i \gets 1$ \textbf{to} $m$}
+        \For{$j \gets 1$ \textbf{to} $n$}
+            \If{$X[i] = Y[j]$}
+                \State $c[i, j] \gets c[i-1, j-1] + 1$
+            \Else
+                \State $c[i, j] \gets \max(c[i-1, j], c[i, j-1])$
+            \EndIf
+        \EndFor
+    \EndFor
+    \State \Return $c[m, n]$
+\EndFunction
+\end{algorithmic}
+\end{algorithm}
+
+\section{Code Listings in Multiple Languages}
+
+\subsection{Python Implementation}
+
+\begin{lstlisting}[language=Python, caption=Matrix Multiplication in NumPy]
+import numpy as np
+from typing import Tuple
+
+def matrix_multiply(A: np.ndarray, B: np.ndarray) -> np.ndarray:
+    """
+    Multiply two matrices using NumPy.
+    
+    Args:
+        A: First matrix of shape (m, n)
+        B: Second matrix of shape (n, p)
+    
+    Returns:
+        Product matrix of shape (m, p)
+    """
+    if A.shape[1] != B.shape[0]:
+        raise ValueError("Incompatible dimensions for matrix multiplication")
+    
+    # Using @ operator for matrix multiplication
+    C = A @ B
+    
+    # Alternative: using np.matmul or np.dot
+    # C = np.matmul(A, B)
+    # C = np.dot(A, B)
+    
+    return C
+
+# Example usage
+if __name__ == "__main__":
+    A = np.random.randn(100, 50)
+    B = np.random.randn(50, 75)
+    C = matrix_multiply(A, B)
+    print(f"Result shape: {C.shape}")
+\end{lstlisting}
+
+\subsection{C++ Implementation}
+
+\begin{lstlisting}[language=C++, caption=Binary Search Tree in C++]
+#include <iostream>
+#include <memory>
+
+template<typename T>
+class BST {
+private:
+    struct Node {
+        T data;
+        std::unique_ptr<Node> left;
+        std::unique_ptr<Node> right;
+        
+        Node(T val) : data(val), left(nullptr), right(nullptr) {}
+    };
+    
+    std::unique_ptr<Node> root;
+    
+    void insertHelper(std::unique_ptr<Node>& node, T value) {
+        if (!node) {
+            node = std::make_unique<Node>(value);
+            return;
+        }
+        if (value < node->data) {
+            insertHelper(node->left, value);
+        } else {
+            insertHelper(node->right, value);
+        }
+    }
+
+public:
+    BST() : root(nullptr) {}
+    
+    void insert(T value) {
+        insertHelper(root, value);
+    }
+    
+    bool search(T value) const {
+        Node* current = root.get();
+        while (current) {
+            if (value == current->data) return true;
+            current = (value < current->data) ? 
+                      current->left.get() : current->right.get();
+        }
+        return false;
+    }
+};
+\end{lstlisting}
+
+\subsection{JavaScript Implementation}
+
+\begin{lstlisting}[language=Java, caption=Promises and Async in JavaScript]
+// Async/await example with error handling
+async function fetchUserData(userId) {
+    try {
+        const response = await fetch(`/api/users/${userId}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Failed to fetch user data:', error);
+        throw error;
+    }
+}
+
+// Promise chain example
+function processData(data) {
+    return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            if (data && data.length > 0) {
+                resolve(data.map(item => item * 2));
+            } else {
+                reject(new Error('Invalid data'));
+            }
+        }, 1000);
+    });
+}
+
+// Usage
+fetchUserData(123)
+    .then(user => console.log('User:', user))
+    .catch(err => console.error('Error:', err));
+\end{lstlisting}
+
+\section{Text Formatting Features}
+
+\subsection{Various Text Styles}
+
+This paragraph demonstrates \textbf{bold text}, \textit{italic text}, \texttt{monospace text}, \underline{underlined text}, and \textsc{Small Caps Text}.
+
+We can also use \hl{highlighted text}, \st{strikethrough text}, and \dashuline{dashed underline}.
+
+\subsection{Special Characters and Symbols}
+
+Common symbols: \% \$ \& \# \_ \{ \} \textbackslash{} \~{} \^{}
+
+Quotation marks: ``double quotes'' and `single quotes'
+
+Em-dash: This is an example---note the three hyphens.
+
+Ellipsis: This is how it works\ldots
+
+\subsection{Footnotes}
+
+This is a sentence with a footnote\footnote{This is the footnote text at the bottom of the page.}. Here's another one\footnote{Second footnote for testing multiple footnotes.}.
+
+\subsection{Lists with Custom Formatting}
+
+\begin{enumerate}[label=(\Roman*)]
+    \item First item with Roman numerals
+    \item Second item
+    \begin{enumerate}[label=(\alph*)]
+        \item Nested item with letters
+        \item Another nested item
+    \end{enumerate}
+    \item Third item
+\end{enumerate}
+
+\begin{itemize}[label=$\triangleright$]
+    \item Custom bullet point
+    \item Another custom bullet
+    \begin{itemize}[label=$\circ$]
+        \item Nested with circles
+        \item More nesting
+    \end{itemize}
+\end{itemize}
+
+\section{Wrap Figures and Side Captions}
+
+\begin{wrapfigure}{r}{0.4\textwidth}
+\centering
+\begin{tikzpicture}[scale=0.8]
+    \draw[fill=blue!20] (0,0) circle (1.5);
+    \draw[fill=red!20] (1,0.5) circle (1);
+    \node at (0.5,-2) {Venn Diagram};
+\end{tikzpicture}
+\caption{Wrapped figure example}
+\label{fig:wrap}
+\end{wrapfigure}
+
+This text wraps around the figure on the right. \lipsum[1]
+
+The figure demonstrates the wrapfig package functionality, which allows text to flow around figures. This is particularly useful for documents with many small figures that don't need to take up the full width of the page.
+
+\clearpage
+
+\section{Subfigures and Complex Layouts}
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \begin{tikzpicture}[scale=0.8]
+        \begin{axis}[
+            domain=0:2*pi,
+            samples=100,
+            xlabel=$x$,
+            ylabel=$\sin(x)$,
+            grid=major
+        ]
+        \addplot[blue, thick] {sin(deg(x))};
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Sine function}
+    \label{fig:sub1}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \begin{tikzpicture}[scale=0.8]
+        \begin{axis}[
+            domain=0:2*pi,
+            samples=100,
+            xlabel=$x$,
+            ylabel=$\cos(x)$,
+            grid=major
+        ]
+        \addplot[red, thick] {cos(deg(x))};
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Cosine function}
+    \label{fig:sub2}
+\end{subfigure}
+
+\vspace{0.5cm}
+
+\begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \begin{tikzpicture}[scale=0.8]
+        \begin{axis}[
+            domain=-3:3,
+            samples=100,
+            xlabel=$x$,
+            ylabel=$e^x$,
+            grid=major
+        ]
+        \addplot[green, thick] {exp(x)};
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Exponential function}
+    \label{fig:sub3}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \begin{tikzpicture}[scale=0.8]
+        \begin{axis}[
+            domain=0.1:10,
+            samples=100,
+            xlabel=$x$,
+            ylabel=$\ln(x)$,
+            grid=major
+        ]
+        \addplot[orange, thick] {ln(x)};
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Natural logarithm}
+    \label{fig:sub4}
+\end{subfigure}
+\caption{Common mathematical functions}
+\label{fig:functions}
+\end{figure}
+
+\section{Rotated Content}
+
+\subsection{Sideways Table}
+
+\begin{sidewaystable}
+\centering
+\caption{Wide Table in Landscape Orientation}
+\label{tab:sideways}
+\begin{tabular}{lcccccccccc}
 \toprule
-\textbf{Schedule} & \textbf{Formula} & \textbf{Properties} \\
+\textbf{Method} & \textbf{Year} & \textbf{Acc.} & \textbf{Prec.} & \textbf{Rec.} & \textbf{F1} & \textbf{AUC} & \textbf{Time} & \textbf{Mem.} & \textbf{Params} & \textbf{FLOPs} \\
 \midrule
-Linear & $\beta_t = \beta_{\min} + \frac{t-1}{T-1}(\beta_{\max} - \beta_{\min})$ & Simple, widely used \\
-Cosine & $\bar{\alpha}_t = \frac{f(t)}{f(0)}$, $f(t) = \cos\left(\frac{t/T + s}{1 + s} \cdot \frac{\pi}{2}\right)^2$ & Better for low resolution \\
-Quadratic & $\beta_t = \beta_{\min} + \left(\frac{t-1}{T-1}\right)^2(\beta_{\max} - \beta_{\min})$ & Slower noise addition \\
-Sigmoid & $\beta_t = \sigma\left(\omega\left(\frac{2t}{T} - 1\right)\right)$ & Smooth transition \\
+CNN-Basic & 2015 & 87.3 & 85.2 & 86.1 & 85.6 & 0.91 & 12.3 & 2.1 & 5M & 1.2G \\
+ResNet-50 & 2016 & 92.1 & 91.8 & 90.5 & 91.1 & 0.95 & 23.4 & 4.5 & 25M & 4.1G \\
+VGG-16 & 2015 & 89.7 & 88.9 & 89.2 & 89.0 & 0.93 & 34.5 & 6.8 & 138M & 15.5G \\
+MobileNet & 2017 & 88.2 & 87.5 & 88.1 & 87.8 & 0.92 & 12.3 & 1.2 & 4M & 0.6G \\
+EfficientNet & 2019 & 94.3 & 93.8 & 94.1 & 94.0 & 0.97 & 18.2 & 2.8 & 7M & 1.8G \\
+Transformer & 2020 & 95.8 & 95.2 & 95.6 & 95.4 & 0.98 & 45.6 & 8.9 & 86M & 12.3G \\
+\bottomrule
+\end{tabular}
+\end{sidewaystable}
+
+\section{Cross-References and Labels}
+
+This document contains numerous cross-references. For example:
+\begin{itemize}
+    \item Equation \ref{eq:stokes} shows Stokes' theorem
+    \item Figure \ref{fig:3d} demonstrates 3D graphics
+    \item Table \ref{tab:advanced} contains multi-row data
+    \item Algorithm \ref{alg:mergesort} implements merge sort
+    \item Section \ref{sec:theorems} discusses advanced theorems
+\end{itemize}
+
+\section{Advanced Theorems and Proofs}
+\label{sec:theorems}
+
+\begin{theorem}[Cauchy-Schwarz Inequality]
+For any vectors $\mathbf{u}, \mathbf{v} \in \mathbb{R}^n$:
+\begin{equation}
+    |\langle \mathbf{u}, \mathbf{v} \rangle| \leq \|\mathbf{u}\| \cdot \|\mathbf{v}\|
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+Consider the quadratic function:
+\begin{equation}
+    f(t) = \|\mathbf{u} - t\mathbf{v}\|^2 = \langle \mathbf{u} - t\mathbf{v}, \mathbf{u} - t\mathbf{v} \rangle
+\end{equation}
+
+Expanding:
+\begin{align}
+    f(t) &= \langle \mathbf{u}, \mathbf{u} \rangle - 2t\langle \mathbf{u}, \mathbf{v} \rangle + t^2\langle \mathbf{v}, \mathbf{v} \rangle \\
+    &= \|\mathbf{u}\|^2 - 2t\langle \mathbf{u}, \mathbf{v} \rangle + t^2\|\mathbf{v}\|^2
+\end{align}
+
+Since $f(t) \geq 0$ for all $t$, the discriminant must be non-positive:
+\begin{equation}
+    4\langle \mathbf{u}, \mathbf{v} \rangle^2 - 4\|\mathbf{u}\|^2\|\mathbf{v}\|^2 \leq 0
+\end{equation}
+
+Therefore:
+\begin{equation}
+    \langle \mathbf{u}, \mathbf{v} \rangle^2 \leq \|\mathbf{u}\|^2\|\mathbf{v}\|^2
+\end{equation}
+
+Taking square roots of both sides completes the proof.
+\end{proof}
+
+\begin{lemma}[Triangle Inequality]
+For any vectors $\mathbf{u}, \mathbf{v} \in \mathbb{R}^n$:
+\begin{equation}
+    \|\mathbf{u} + \mathbf{v}\| \leq \|\mathbf{u}\| + \|\mathbf{v}\|
+\end{equation}
+\end{lemma}
+
+\begin{corollary}
+The reverse triangle inequality also holds:
+\begin{equation}
+    |\|\mathbf{u}\| - \|\mathbf{v}\|| \leq \|\mathbf{u} - \mathbf{v}\|
+\end{equation}
+\end{corollary}
+
+\begin{example}[Computing Inner Products]
+Let $\mathbf{u} = (1, 2, 3)$ and $\mathbf{v} = (4, 5, 6)$. Then:
+\begin{align}
+    \langle \mathbf{u}, \mathbf{v} \rangle &= 1 \cdot 4 + 2 \cdot 5 + 3 \cdot 6 = 32 \\
+    \|\mathbf{u}\| &= \sqrt{1^2 + 2^2 + 3^2} = \sqrt{14} \\
+    \|\mathbf{v}\| &= \sqrt{4^2 + 5^2 + 6^2} = \sqrt{77}
+\end{align}
+
+Verifying Cauchy-Schwarz: $|32| \leq \sqrt{14} \cdot \sqrt{77} = \sqrt{1078} \approx 32.83$ \checkmark
+\end{example}
+
+\begin{remark}
+The Cauchy-Schwarz inequality is fundamental in functional analysis and has applications in machine learning, particularly in kernel methods and similarity measures.
+\end{remark}
+
+\section{Advanced Equation Environments}
+
+\subsection{Cases and Piecewise Functions}
+
+\begin{equation}
+    f(x) = \begin{cases}
+        x^2 & \text{if } x \geq 0 \\
+        -x^2 & \text{if } x < 0
+    \end{cases}
+\end{equation}
+
+\subsection{Matrices with Special Formatting}
+
+Block matrix:
+\begin{equation}
+    \mathbf{M} = \left[\begin{array}{c|c}
+        \mathbf{A} & \mathbf{B} \\
+        \hline
+        \mathbf{C} & \mathbf{D}
+    \end{array}\right]
+\end{equation}
+
+Augmented matrix for linear systems:
+\begin{equation}
+    \left[\begin{array}{ccc|c}
+        1 & 2 & 3 & 4 \\
+        5 & 6 & 7 & 8 \\
+        9 & 10 & 11 & 12
+    \end{array}\right]
+\end{equation}
+
+\subsection{Multi-line Equations with Annotations}
+
+\begin{align}
+    \frac{d}{dx}\left[\int_a^x f(t)\,dt\right] &= f(x) \tag{Fundamental Theorem} \\
+    \int_a^b f(x)\,dx &= F(b) - F(a) \tag{Evaluation} \\
+    \int u\,dv &= uv - \int v\,du \tag{Integration by Parts}
+\end{align}
+
+\section{Circuit Diagrams with CircuiTikZ}
+
+Unfortunately, CircuiTikZ requires additional setup. Here's a basic electrical circuit using standard TikZ:
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[scale=1.2]
+    % Resistors
+    \draw (0,0) to[short] (0,2);
+    \draw (0,2) -- (2,2);
+    \draw[thick] (2,2) -- (2.5,2.2) -- (3,2) -- (3.5,2.2) -- (4,2);
+    \node at (3,2.5) {$R_1$};
+    
+    \draw (4,2) -- (6,2);
+    \draw (6,2) to[short] (6,0);
+    \draw (6,0) -- (4,0);
+    
+    \draw[thick] (4,0) -- (3.5,-0.2) -- (3,0) -- (2.5,-0.2) -- (2,0);
+    \node at (3,-0.5) {$R_2$};
+    
+    \draw (2,0) -- (0,0);
+    
+    % Battery
+    \draw[thick] (-0.2,0.8) -- (0.2,0.8);
+    \draw[thick] (-0.1,1.2) -- (0.1,1.2);
+    \node at (-0.7,1) {$V$};
+    
+    % Current direction
+    \draw[->,thick,red] (1,2.3) -- (2,2.3);
+    \node[red] at (1.5,2.7) {$I$};
+\end{tikzpicture}
+\caption{Simple series circuit}
+\label{fig:circuit}
+\end{figure}
+
+\section{Pattern Fills and Decorations}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+    \draw[pattern=north east lines, pattern color=blue] (0,0) rectangle (2,2);
+    \node at (1,-0.5) {NE Lines};
+    
+    \draw[pattern=dots, pattern color=red] (3,0) rectangle (5,2);
+    \node at (4,-0.5) {Dots};
+    
+    \draw[pattern=grid, pattern color=green] (6,0) rectangle (8,2);
+    \node at (7,-0.5) {Grid};
+    
+    \draw[pattern=crosshatch, pattern color=orange] (9,0) rectangle (11,2);
+    \node at (10,-0.5) {Crosshatch};
+\end{tikzpicture}
+\caption{Different TikZ pattern fills}
+\label{fig:patterns}
+\end{figure}
+
+\section{State Machines and Automata}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[->,>=stealth',shorten >=1pt,auto,node distance=3cm,thick]
+    \node[state,initial] (q0) {$q_0$};
+    \node[state] (q1) [right of=q0] {$q_1$};
+    \node[state] (q2) [right of=q1] {$q_2$};
+    \node[state,accepting] (q3) [right of=q2] {$q_3$};
+    
+    \path (q0) edge [bend left] node {a} (q1)
+          (q1) edge [bend left] node {b} (q2)
+          (q2) edge [bend left] node {a} (q3)
+          (q1) edge [loop above] node {a} (q1)
+          (q2) edge [loop above] node {b} (q2)
+          (q0) edge [bend right=60] node [below] {b} (q2);
+\end{tikzpicture}
+\caption{Finite State Automaton}
+\label{fig:automaton}
+\end{figure}
+
+\section{Game Trees and Decision Diagrams}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+    level 1/.style={sibling distance=4cm},
+    level 2/.style={sibling distance=2cm},
+    level 3/.style={sibling distance=1cm}
+]
+\node[circle,draw] {Root}
+    child {node[circle,draw] {A}
+        child {node[circle,draw] {A1}}
+        child {node[circle,draw] {A2}}
+    }
+    child {node[circle,draw] {B}
+        child {node[circle,draw] {B1}
+            child {node[rectangle,draw] {5}}
+            child {node[rectangle,draw] {3}}
+        }
+        child {node[circle,draw] {B2}
+            child {node[rectangle,draw] {8}}
+            child {node[rectangle,draw] {2}}
+        }
+    }
+    child {node[circle,draw] {C}
+        child {node[circle,draw] {C1}}
+        child {node[circle,draw] {C2}}
+    };
+\end{tikzpicture}
+\caption{Game tree for minimax algorithm}
+\label{fig:gametree}
+\end{figure}
+
+\section{Mathematical Proofs Collection}
+
+\begin{proposition}[Binomial Theorem]
+For any real numbers $a, b$ and non-negative integer $n$:
+\begin{equation}
+    (a + b)^n = \sum_{k=0}^{n} \binom{n}{k} a^{n-k}b^k
+\end{equation}
+\end{proposition}
+
+\begin{theorem}[Fundamental Theorem of Calculus]
+If $f$ is continuous on $[a,b]$ and $F$ is an antiderivative of $f$ on $[a,b]$, then:
+\begin{equation}
+    \int_a^b f(x)\,dx = F(b) - F(a)
+\end{equation}
+\end{theorem}
+
+\begin{theorem}[Euler's Formula]
+For any real number $\theta$:
+\begin{equation}
+    e^{i\theta} = \cos\theta + i\sin\theta
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+Using Taylor series expansion:
+\begin{align}
+    e^{i\theta} &= \sum_{n=0}^{\infty} \frac{(i\theta)^n}{n!} \\
+    &= \sum_{n=0}^{\infty} \frac{i^n\theta^n}{n!} \\
+    &= \left(\sum_{n=0}^{\infty} \frac{(-1)^n\theta^{2n}}{(2n)!}\right) + i\left(\sum_{n=0}^{\infty} \frac{(-1)^n\theta^{2n+1}}{(2n+1)!}\right) \\
+    &= \cos\theta + i\sin\theta
+\end{align}
+\end{proof}
+
+\section{Commutative Diagrams}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[node distance=3cm, auto]
+    \node (A) {$A$};
+    \node (B) [right of=A] {$B$};
+    \node (C) [below of=A] {$C$};
+    \node (D) [below of=B] {$D$};
+    
+    \draw[->] (A) -- node {$f$} (B);
+    \draw[->] (A) -- node [left] {$g$} (C);
+    \draw[->] (B) -- node [right] {$h$} (D);
+    \draw[->] (C) -- node {$k$} (D);
+\end{tikzpicture}
+\caption{Commutative diagram: $h \circ f = k \circ g$}
+\label{fig:commutative}
+\end{figure}
+
+\section{Probability and Statistics}
+
+\subsection{Probability Distributions}
+
+\begin{table}[H]
+\centering
+\caption{Common Probability Distributions}
+\label{tab:distributions}
+\begin{tabular}{lll}
+\toprule
+\textbf{Distribution} & \textbf{PDF/PMF} & \textbf{Parameters} \\
+\midrule
+Normal & $\frac{1}{\sigma\sqrt{2\pi}}e^{-\frac{(x-\mu)^2}{2\sigma^2}}$ & $\mu \in \R, \sigma > 0$ \\[0.3cm]
+Exponential & $\lambda e^{-\lambda x}$ & $\lambda > 0$ \\[0.3cm]
+Poisson & $\frac{\lambda^k e^{-\lambda}}{k!}$ & $\lambda > 0$ \\[0.3cm]
+Binomial & $\binom{n}{k}p^k(1-p)^{n-k}$ & $n \in \N, p \in [0,1]$ \\[0.3cm]
+Beta & $\frac{x^{\alpha-1}(1-x)^{\beta-1}}{B(\alpha,\beta)}$ & $\alpha, \beta > 0$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\section{Visualizations}
+\subsection{Central Limit Theorem}
 
-\subsection{Forward Process Visualization}
+\begin{theorem}[Central Limit Theorem]
+Let $X_1, X_2, \ldots, X_n$ be i.i.d. random variables with $\E[X_i] = \mu$ and $\Var(X_i) = \sigma^2 < \infty$. Then:
+\begin{equation}
+    \frac{\bar{X}_n - \mu}{\sigma/\sqrt{n}} \xrightarrow{d} \N(0,1)
+\end{equation}
+where $\bar{X}_n = \frac{1}{n}\sum_{i=1}^n X_i$.
+\end{theorem}
 
-\begin{figure}[H]
-\centering
-\begin{tikzpicture}[scale=0.9]
-    % Draw the forward process
-    \foreach \i in {0,1,2,3,4} {
-        \node[circle,draw,minimum size=1cm] (x\i) at (2.5*\i,0) {$\mathbf{x}_{\i}$};
-    }
-    \node[circle,draw,minimum size=1cm] (xT) at (12.5,0) {$\mathbf{x}_T$};
-    
-    % Forward arrows
-    \foreach \i/\j in {0/1,1/2,2/3,3/4} {
-        \draw[->,thick,blue] (x\i) -- (x\j) node[midway,above] {$q$};
-    }
-    \draw[->,thick,blue,dashed] (x4) -- (xT) node[midway,above] {$\cdots$};
-    
-    % Noise level indicators
-    \foreach \i/\noise in {0/0,1/20,2/40,3/60,4/80} {
-        \node[below=0.5cm of x\i] {\small \noise\% noise};
-    }
-    \node[below=0.5cm of xT] {\small 100\% noise};
-    
-    % Reverse process
-    \foreach \i/\j in {1/0,2/1,3/2,4/3} {
-        \draw[->,thick,red,bend right=30] (x\i) to node[midway,below] {$p_\theta$} (x\j);
-    }
-    \draw[->,thick,red,bend right=30,dashed] (xT) to node[midway,below] {$\cdots$} (x4);
-\end{tikzpicture}
-\caption{Forward diffusion process $q$ (blue) and reverse denoising process $p_\theta$ (red)}
-\label{fig:diffusion_process}
-\end{figure}
+\section{Optimization and Convexity}
 
-\subsection{Loss Landscape}
+\begin{definition}[Convex Function]
+A function $f: \mathbb{R}^n \to \mathbb{R}$ is convex if for all $x, y \in \mathbb{R}^n$ and $\lambda \in [0,1]$:
+\begin{equation}
+    f(\lambda x + (1-\lambda)y) \leq \lambda f(x) + (1-\lambda)f(y)
+\end{equation}
+\end{definition}
+
+\begin{theorem}[Jensen's Inequality]
+If $f$ is convex and $X$ is a random variable, then:
+\begin{equation}
+    f(\E[X]) \leq \E[f(X)]
+\end{equation}
+\end{theorem}
+
+\section{Advanced Graphics: Heatmap}
 
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}
 \begin{axis}[
     width=10cm,
-    height=6cm,
-    xlabel={Training Steps},
-    ylabel={Loss},
-    grid=major,
-    legend pos=north east,
-    title={Training Loss Curves}
+    height=8cm,
+    colorbar,
+    colormap/hot,
+    xlabel={$x$},
+    ylabel={$y$},
+    title={Heatmap: $f(x,y) = \sin(x)\cos(y)$}
 ]
-% Simple loss
-\addplot[blue, thick] coordinates {
-    (0,5) (100,3.5) (200,2.8) (300,2.3) (400,2.0) 
-    (500,1.8) (600,1.65) (700,1.55) (800,1.48) (900,1.43) (1000,1.40)
-};
-\addlegendentry{$\mathcal{L}_{\text{simple}}$}
-
-% VLB loss
-\addplot[red, thick, dashed] coordinates {
-    (0,6) (100,4.2) (200,3.3) (300,2.7) (400,2.3)
-    (500,2.0) (600,1.8) (700,1.65) (800,1.55) (900,1.48) (1000,1.45)
-};
-\addlegendentry{$\mathcal{L}_{\text{VLB}}$}
-
-% Hybrid loss
-\addplot[green, thick, dotted] coordinates {
-    (0,5.5) (100,3.8) (200,3.0) (300,2.5) (400,2.15)
-    (500,1.9) (600,1.72) (700,1.60) (800,1.51) (900,1.45) (1000,1.42)
-};
-\addlegendentry{$\mathcal{L}_{\text{hybrid}}$}
-\end{axis}
-\end{tikzpicture}
-\caption{Comparison of different loss objectives during training}
-\label{fig:loss_curves}
-\end{figure}
-
-\section{Implementation Details}
-
-\subsection{Neural Network Architecture}
-
-The noise prediction network $\bm{\epsilon}_\theta$ typically uses a U-Net architecture:
-
-\begin{lstlisting}[language=Python, caption=U-Net Architecture for DDPM]
-import torch
-import torch.nn as nn
-
-class SinusoidalPositionEmbeddings(nn.Module):
-    def __init__(self, dim):
-        super().__init__()
-        self.dim = dim
-    
-    def forward(self, time):
-        device = time.device
-        half_dim = self.dim // 2
-        embeddings = math.log(10000) / (half_dim - 1)
-        embeddings = torch.exp(torch.arange(half_dim, device=device) * -embeddings)
-        embeddings = time[:, None] * embeddings[None, :]
-        embeddings = torch.cat((embeddings.sin(), embeddings.cos()), dim=-1)
-        return embeddings
-
-class UNet(nn.Module):
-    def __init__(self, in_channels=3, out_channels=3, time_dim=256):
-        super().__init__()
-        self.time_mlp = nn.Sequential(
-            SinusoidalPositionEmbeddings(time_dim),
-            nn.Linear(time_dim, time_dim * 4),
-            nn.GELU(),
-            nn.Linear(time_dim * 4, time_dim)
-        )
-        
-        # Encoder
-        self.enc1 = DoubleConv(in_channels, 64)
-        self.enc2 = DoubleConv(64, 128)
-        self.enc3 = DoubleConv(128, 256)
-        self.enc4 = DoubleConv(256, 512)
-        
-        # Bottleneck
-        self.bottleneck = DoubleConv(512, 1024)
-        
-        # Decoder
-        self.dec4 = DoubleConv(1024 + 512, 512)
-        self.dec3 = DoubleConv(512 + 256, 256)
-        self.dec2 = DoubleConv(256 + 128, 128)
-        self.dec1 = DoubleConv(128 + 64, 64)
-        
-        self.final = nn.Conv2d(64, out_channels, kernel_size=1)
-    
-    def forward(self, x, t):
-        # Time embedding
-        t_emb = self.time_mlp(t)
-        
-        # Encoder path with skip connections
-        e1 = self.enc1(x)
-        e2 = self.enc2(self.pool(e1))
-        e3 = self.enc3(self.pool(e2))
-        e4 = self.enc4(self.pool(e3))
-        
-        # Bottleneck
-        b = self.bottleneck(self.pool(e4))
-        
-        # Decoder path with skip connections
-        d4 = self.dec4(torch.cat([self.up(b), e4], dim=1))
-        d3 = self.dec3(torch.cat([self.up(d4), e3], dim=1))
-        d2 = self.dec2(torch.cat([self.up(d3), e2], dim=1))
-        d1 = self.dec1(torch.cat([self.up(d2), e1], dim=1))
-        
-        return self.final(d1)
-\end{lstlisting}
-
-\subsection{Training Hyperparameters}
-
-\begin{table}[H]
-\centering
-\caption{Typical DDPM Training Hyperparameters}
-\label{tab:hyperparams}
-\begin{tabular}{@{}llr@{}}
-\toprule
-\textbf{Category} & \textbf{Parameter} & \textbf{Value} \\
-\midrule
-\multirow{4}{*}{Diffusion} & Number of timesteps ($T$) & 1000 \\
-& $\beta_{\min}$ & 0.0001 \\
-& $\beta_{\max}$ & 0.02 \\
-& Schedule & Linear \\
-\midrule
-\multirow{4}{*}{Training} & Batch size & 128 \\
-& Learning rate & $2 \times 10^{-4}$ \\
-& Optimizer & Adam \\
-& EMA decay & 0.9999 \\
-\midrule
-\multirow{3}{*}{Architecture} & Base channels & 128 \\
-& Channel multiplier & [1, 2, 4, 8] \\
-& Attention resolutions & [16] \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\section{Advanced Topics}
-
-\subsection{Score Matching Connection}
-
-DDPM is closely related to score-based generative models:
-
-\begin{theorem}[Score Matching Equivalence]
-The denoising objective in DDPM is equivalent to score matching:
-\begin{equation}
-    \bm{\epsilon}_\theta(\mathbf{x}_t, t) \approx -\sqrt{1-\bar{\alpha}_t} \nabla_{\mathbf{x}_t} \log q(\mathbf{x}_t)
-\end{equation}
-\end{theorem}
-
-This connection enables using Langevin dynamics for sampling:
-\begin{equation}
-    \mathbf{x}_{t-1} = \mathbf{x}_t + \frac{\eta}{2}\nabla_{\mathbf{x}_t} \log p_\theta(\mathbf{x}_t) + \sqrt{\eta}\mathbf{z}
-\end{equation}
-
-\subsection{DDIM: Deterministic Sampling}
-
-Denoising Diffusion Implicit Models (DDIM) provide deterministic sampling:
-
-\begin{equation}
-    \mathbf{x}_{t-1} = \sqrt{\bar{\alpha}_{t-1}}\left(\frac{\mathbf{x}_t - \sqrt{1-\bar{\alpha}_t}\bm{\epsilon}_\theta(\mathbf{x}_t, t)}{\sqrt{\bar{\alpha}_t}}\right) + \sqrt{1-\bar{\alpha}_{t-1}-\sigma_t^2}\bm{\epsilon}_\theta(\mathbf{x}_t, t) + \sigma_t\mathbf{z}
-\end{equation}
-
-Setting $\sigma_t = 0$ yields deterministic generation.
-
-\subsection{Classifier-Free Guidance}
-
-For conditional generation with improved sample quality:
-
-\begin{equation}
-    \tilde{\bm{\epsilon}}_\theta(\mathbf{x}_t, t, c) = (1 + w)\bm{\epsilon}_\theta(\mathbf{x}_t, t, c) - w\bm{\epsilon}_\theta(\mathbf{x}_t, t, \varnothing)
-\end{equation}
-
-where $w$ is the guidance scale and $\varnothing$ denotes null conditioning.
-
-\section{Experimental Results}
-
-\subsection{Sample Quality Metrics}
-
-\begin{figure}[H]
-\centering
-\begin{tikzpicture}
-\begin{axis}[
-    ybar,
-    bar width=0.5cm,
-    width=12cm,
-    height=6cm,
-    xlabel={Model Variant},
-    ylabel={FID Score $\downarrow$},
-    ymin=0, ymax=15,
-    xtick=data,
-    symbolic x coords={DDPM,DDPM-EMA,DDIM-10,DDIM-50,DDIM-100,CFG-1.5,CFG-2.0},
-    x tick label style={rotate=45,anchor=east},
-    nodes near coords,
-    grid=major,
-    title={FID Scores on CIFAR-10}
-]
-\addplot[fill=blue!30] coordinates {
-    (DDPM,3.17)
-    (DDPM-EMA,2.90)
-    (DDIM-10,4.36)
-    (DDIM-50,3.51)
-    (DDIM-100,3.26)
-    (CFG-1.5,2.78)
-    (CFG-2.0,2.65)
+\addplot[
+    matrix plot*,
+    point meta=explicit,
+    mesh/cols=20,
+] table[meta=C] {
+x y C
+0 0 0
+0 1 0.84
+0 2 0.91
+0 3 0.14
+1 0 0.84
+1 1 0.71
+1 2 0.76
+1 3 0.12
+2 0 0.91
+2 1 0.76
+2 2 0.83
+2 3 0.13
+3 0 0.14
+3 1 0.12
+3 2 0.13
+3 3 0.02
 };
 \end{axis}
 \end{tikzpicture}
-\caption{FID scores for different DDPM variants and sampling strategies}
-\label{fig:fid_scores}
+\caption{Heatmap visualization}
+\label{fig:heatmap}
 \end{figure}
 
-\subsection{Computational Efficiency}
+\section{Conclusion and Summary}
 
-\begin{table}[H]
-\centering
-\caption{Sampling Time Comparison (seconds per image)}
-\label{tab:sampling_time}
-\begin{tabular}{@{}lrrr@{}}
-\toprule
-\textbf{Method} & \textbf{Steps} & \textbf{Time (s)} & \textbf{Speedup} \\
-\midrule
-DDPM & 1000 & 17.3 & 1.0× \\
-DDPM & 500 & 8.7 & 2.0× \\
-DDIM & 100 & 1.8 & 9.6× \\
-DDIM & 50 & 0.9 & 19.2× \\
-DDIM & 20 & 0.4 & 43.3× \\
-DDIM & 10 & 0.2 & 86.5× \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\section{Theoretical Analysis}
-
-\subsection{Convergence Properties}
-
-\begin{proposition}[Convergence Rate]
-Under mild assumptions, the DDPM training objective converges at rate $\mathcal{O}(1/\sqrt{n})$ where $n$ is the number of training iterations:
-\begin{equation}
-    \E[\mathcal{L}(\theta_n)] - \mathcal{L}^* \leq \frac{C}{\sqrt{n}}
-\end{equation}
-for some constant $C$ depending on the Lipschitz constant of $\bm{\epsilon}_\theta$.
-\end{proposition}
-
-\subsection{Sample Complexity}
-
-\begin{theorem}[Sample Complexity Bound]
-To achieve $\epsilon$-accuracy in Wasserstein distance, DDPM requires:
-\begin{equation}
-    N = \mathcal{O}\left(\frac{d^2}{\epsilon^4} \cdot \log\left(\frac{1}{\delta}\right)\right)
-\end{equation}
-samples, where $d$ is the data dimension and $\delta$ is the failure probability.
-\end{theorem}
-
-\section{Conclusion}
-
-Denoising Diffusion Probabilistic Models represent a powerful framework for generative modeling, combining:
+This comprehensive test document has demonstrated:
 
 \begin{enumerate}
-    \item \textbf{Theoretical elegance}: Clear probabilistic interpretation
-    \item \textbf{Training stability}: Simple $L_2$ loss objective
-    \item \textbf{Sample quality}: State-of-the-art generation results
-    \item \textbf{Flexibility}: Extensions to conditional generation, accelerated sampling
+    \item \textbf{Mathematical typesetting}: Complex equations, matrices, theorems, and proofs
+    \item \textbf{Scientific notation}: Chemistry formulas, SI units, and measurements
+    \item \textbf{Graphics}: TikZ diagrams, PGFPlots, 3D graphics, neural networks, flowcharts
+    \item \textbf{Tables}: Simple, advanced, long tables, colored tables, rotated tables
+    \item \textbf{Algorithms}: Pseudocode with proper formatting
+    \item \textbf{Code listings}: Multiple programming languages with syntax highlighting
+    \item \textbf{Document structure}: Sections, cross-references, table of contents
+    \item \textbf{Text formatting}: Various styles, footnotes, lists, special characters
+    \item \textbf{Figures}: Subfigures, wrapped figures, multiple layouts
+    \item \textbf{Advanced features}: State machines, game trees, commutative diagrams, patterns
 \end{enumerate}
 
-The mathematical framework presented here demonstrates the deep connections between diffusion models, score matching, and variational inference, while practical algorithms show their computational feasibility.
+\subsection{Package Coverage}
 
-\subsection{Future Directions}
-
-Several promising research directions include:
-\begin{itemize}
-    \item \textbf{Efficient sampling}: Further acceleration beyond DDIM
-    \item \textbf{Latent diffusion}: Operating in compressed latent spaces
-    \item \textbf{Continuous-time formulations}: SDEs and ODEs
-    \item \textbf{Multi-modal generation}: Text-to-image, audio synthesis
+This document successfully tests the following LaTeX packages:
+\begin{multicols}{3}
+\begin{itemize}[noitemsep]
+    \item amsmath
+    \item amssymb
+    \item amsthm
+    \item mathtools
+    \item geometry
+    \item graphicx
+    \item xcolor
+    \item tikz
+    \item pgfplots
+    \item booktabs
+    \item multirow
+    \item array
+    \item longtable
+    \item colortbl
+    \item algorithm
+    \item algorithmicx
+    \item listings
+    \item hyperref
+    \item enumerate
+    \item enumitem
+    \item subcaption
+    \item float
+    \item wrapfig
+    \item rotating
+    \item fancyhdr
+    \item chemfig
+    \item mhchem
+    \item siunitx
+    \item soul
+    \item cancel
+    \item mathrsfs
 \end{itemize}
-
-\appendix
-
-\section{Mathematical Derivations}
-
-\subsection{KL Divergence for Gaussians}
-
-For two Gaussians $p = \N(\bm{\mu}_1, \Sigma_1)$ and $q = \N(\bm{\mu}_2, \Sigma_2)$:
-\begin{equation}
-    D_{\KL}(p \| q) = \frac{1}{2}\left[\log\frac{|\Sigma_2|}{|\Sigma_1|} - d + \text{tr}(\Sigma_2^{-1}\Sigma_1) + (\bm{\mu}_2 - \bm{\mu}_1)^T\Sigma_2^{-1}(\bm{\mu}_2 - \bm{\mu}_1)\right]
-\end{equation}
-
-\subsection{Noise Schedule Derivations}
-
-The relationship between $\alpha_t$ and $\beta_t$:
-\begin{align}
-    \bar{\alpha}_t &= \prod_{i=1}^t \alpha_i = \prod_{i=1}^t (1 - \beta_i) \\
-    \beta_t &= 1 - \frac{\bar{\alpha}_t}{\bar{\alpha}_{t-1}}
-\end{align}
-
-For the cosine schedule:
-\begin{align}
-    \bar{\alpha}_t &= \frac{f(t)}{f(0)}, \quad f(t) = \cos\left(\frac{t/T + s}{1 + s} \cdot \frac{\pi}{2}\right)^2 \\
-    \beta_t &= 1 - \frac{\bar{\alpha}_t}{\bar{\alpha}_{t-1}} = 1 - \frac{f(t)/f(0)}{f(t-1)/f(0)}
-\end{align}
-
-\section{Code Listings}
-
-\subsection{Complete Training Loop}
-
-\begin{lstlisting}[language=Python, caption=Complete DDPM Training Implementation]
-import torch
-import torch.nn.functional as F
-from torch.optim import Adam
-from torch.utils.data import DataLoader
-from tqdm import tqdm
-
-class DDPM:
-    def __init__(self, model, beta_schedule, n_timesteps=1000):
-        self.model = model
-        self.n_timesteps = n_timesteps
-        
-        # Pre-compute schedule values
-        self.betas = beta_schedule
-        self.alphas = 1.0 - self.betas
-        self.alphas_cumprod = torch.cumprod(self.alphas, dim=0)
-        self.alphas_cumprod_prev = F.pad(self.alphas_cumprod[:-1], (1, 0), value=1.0)
-        
-        # Pre-compute values for training
-        self.sqrt_alphas_cumprod = torch.sqrt(self.alphas_cumprod)
-        self.sqrt_one_minus_alphas_cumprod = torch.sqrt(1.0 - self.alphas_cumprod)
-        
-        # Pre-compute values for sampling
-        self.sqrt_recip_alphas = torch.sqrt(1.0 / self.alphas)
-        self.posterior_variance = self.betas * (1.0 - self.alphas_cumprod_prev) / (1.0 - self.alphas_cumprod)
-    
-    def q_sample(self, x_0, t, noise=None):
-        """Sample from q(x_t | x_0)"""
-        if noise is None:
-            noise = torch.randn_like(x_0)
-        
-        sqrt_alphas_cumprod_t = self.sqrt_alphas_cumprod[t].reshape(-1, 1, 1, 1)
-        sqrt_one_minus_alphas_cumprod_t = self.sqrt_one_minus_alphas_cumprod[t].reshape(-1, 1, 1, 1)
-        
-        return sqrt_alphas_cumprod_t * x_0 + sqrt_one_minus_alphas_cumprod_t * noise
-    
-    def train_step(self, x_0):
-        """Single training step"""
-        batch_size = x_0.shape[0]
-        device = x_0.device
-        
-        # Sample random timesteps
-        t = torch.randint(0, self.n_timesteps, (batch_size,), device=device)
-        
-        # Sample noise
-        noise = torch.randn_like(x_0)
-        
-        # Add noise to data
-        x_t = self.q_sample(x_0, t, noise)
-        
-        # Predict noise
-        predicted_noise = self.model(x_t, t)
-        
-        # Compute loss
-        loss = F.mse_loss(predicted_noise, noise)
-        
-        return loss
-    
-    @torch.no_grad()
-    def p_sample(self, x_t, t):
-        """Sample from p(x_{t-1} | x_t)"""
-        batch_size = x_t.shape[0]
-        device = x_t.device
-        
-        # Predict noise
-        predicted_noise = self.model(x_t, t)
-        
-        # Compute mean
-        betas_t = self.betas[t].reshape(-1, 1, 1, 1)
-        sqrt_one_minus_alphas_cumprod_t = self.sqrt_one_minus_alphas_cumprod[t].reshape(-1, 1, 1, 1)
-        sqrt_recip_alphas_t = self.sqrt_recip_alphas[t].reshape(-1, 1, 1, 1)
-        
-        model_mean = sqrt_recip_alphas_t * (
-            x_t - betas_t * predicted_noise / sqrt_one_minus_alphas_cumprod_t
-        )
-        
-        if t[0] == 0:
-            return model_mean
-        else:
-            posterior_variance_t = self.posterior_variance[t].reshape(-1, 1, 1, 1)
-            noise = torch.randn_like(x_t)
-            return model_mean + torch.sqrt(posterior_variance_t) * noise
-    
-    @torch.no_grad()
-    def sample(self, shape):
-        """Generate samples"""
-        device = next(self.model.parameters()).device
-        batch_size = shape[0]
-        
-        # Start from pure noise
-        x = torch.randn(shape, device=device)
-        
-        for i in tqdm(reversed(range(self.n_timesteps)), desc='Sampling'):
-            t = torch.full((batch_size,), i, device=device, dtype=torch.long)
-            x = self.p_sample(x, t)
-        
-        return x
-
-def train_ddpm(model, dataloader, n_epochs=100, lr=2e-4):
-    """Full training loop"""
-    # Initialize DDPM
-    beta_schedule = torch.linspace(1e-4, 0.02, 1000)
-    ddpm = DDPM(model, beta_schedule)
-    
-    # Setup optimizer
-    optimizer = Adam(model.parameters(), lr=lr)
-    
-    # Training loop
-    for epoch in range(n_epochs):
-        total_loss = 0
-        for batch in tqdm(dataloader, desc=f'Epoch {epoch+1}/{n_epochs}'):
-            x_0 = batch[0].to(device)
-            
-            # Forward pass
-            loss = ddpm.train_step(x_0)
-            
-            # Backward pass
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            
-            total_loss += loss.item()
-        
-        avg_loss = total_loss / len(dataloader)
-        print(f'Epoch {epoch+1}, Average Loss: {avg_loss:.4f}')
-        
-        # Generate samples
-        if (epoch + 1) % 10 == 0:
-            samples = ddpm.sample((16, 3, 32, 32))
-            save_images(samples, f'samples_epoch_{epoch+1}.png')
-    
-    return ddpm
-\end{lstlisting}
+\end{multicols}
 
 \vspace{1cm}
 
-\noindent\textbf{Note:} This document extensively tests LaTeX functionalities including complex mathematics, theorems, proofs, algorithms, tables, figures with TikZ/PGFPlots, code listings, cross-references, and various formatting features. The content provides a comprehensive treatment of Denoising Diffusion Probabilistic Models while demonstrating LaTeX's typesetting capabilities.
+\begin{center}
+\fbox{\parbox{0.9\textwidth}{
+\textbf{Testing Complete!} \\[0.3cm]
+If this document compiles successfully, the GitHub Actions LaTeX compiler workflow is functioning correctly and can handle complex, real-world LaTeX documents with multiple packages and advanced features.
+}}
+\end{center}
+
+\appendix
+
+\section{Additional Mathematical Formulas}
+
+\subsection{Trigonometric Identities}
+
+\begin{align}
+    \sin^2\theta + \cos^2\theta &= 1 \\
+    \tan\theta &= \frac{\sin\theta}{\cos\theta} \\
+    \sin(A \pm B) &= \sin A \cos B \pm \cos A \sin B \\
+    \cos(A \pm B) &= \cos A \cos B \mp \sin A \sin B
+\end{align}
+
+\subsection{Complex Analysis}
+
+\begin{equation}
+    \oint_C \frac{f(z)}{z-z_0}\,dz = 2\pi i \cdot f(z_0)
+\end{equation}
+
+\subsection{Vector Calculus}
+
+\begin{align}
+    \nabla \times (\nabla f) &= \mathbf{0} \\
+    \nabla \cdot (\nabla \times \mathbf{F}) &= 0 \\
+    \nabla \times (\nabla \times \mathbf{F}) &= \nabla(\nabla \cdot \mathbf{F}) - \nabla^2\mathbf{F}
+\end{align}
+
+\section{Performance Benchmarks}
+
+\begin{table}[H]
+\centering
+\caption{Compilation Performance Metrics}
+\label{tab:performance}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Metric} & \textbf{Expected} & \textbf{Acceptable Range} \\
+\midrule
+Pages & $\sim$30 & 25--35 \\
+Compilation time & $<$ 30s & 15--45s \\
+PDF size & $\sim$500KB & 300KB--1MB \\
+Figures & 20+ & 15--30 \\
+Tables & 10+ & 8--15 \\
+Equations & 100+ & 80--150 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\vspace{2cm}
+
+\noindent\textbf{Document Status:} Successfully compiled \\
+\textbf{Compiler:} pdflatex with texliveonfly \\
+\textbf{Date:} \today \\
+\textbf{Version:} 1.0
 
 \end{document}
