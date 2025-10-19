@@ -305,11 +305,13 @@ jobs:
       id: cache-texlive
       uses: actions/cache@v4
       with:
-        path: ~/texlive/2025
-        key: texlive-2025-v5-${{ runner.os }}
+        path: |
+          ~/texlive/2025
+          ~/.fonts
+        key: texlive-fonts-2025-v5-${{ runner.os }}
         restore-keys: |
-          texlive-2025-v5-${{ runner.os }}
-          texlive-2025-v5
+          texlive-fonts-2025-v5-${{ runner.os }}
+          texlive-fonts-2025-v5
     
     - name: Check TeX Live installation status
       if: steps.detect-changes.outputs.HAS_CHANGES == 'true'
@@ -527,17 +529,34 @@ jobs:
           echo "Installing XeLaTeX-specific packages..."
           tlmgr install fontspec unicode-math polyglossia xunicode 2>/dev/null || echo "Packages already installed"
           
-          echo "Installing system fonts for multilingual support..."
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq \
-            fonts-liberation \
-            fonts-noto fonts-noto-cjk fonts-noto-cjk-extra \
-            fonts-noto-color-emoji fonts-noto-extra
+          if [ ! -d "$HOME/.fonts" ] || [ ! -f "$HOME/.fonts/.fonts_installed" ]; then
+            echo "Installing system fonts for multilingual support..."
+            
+            mkdir -p $HOME/.fonts
+            
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq \
+              fonts-liberation \
+              fonts-noto fonts-noto-cjk fonts-noto-cjk-extra \
+              fonts-noto-color-emoji fonts-noto-extra
+            
+            echo "Copying fonts to user cache directory..."
+            cp -r /usr/share/fonts/truetype/liberation* $HOME/.fonts/ 2>/dev/null || true
+            cp -r /usr/share/fonts/truetype/noto* $HOME/.fonts/ 2>/dev/null || true
+            
+            touch $HOME/.fonts/.fonts_installed
+            fc-cache -f $HOME/.fonts
+            
+            echo "Fonts installed and cached"
+          else
+            echo "System fonts already cached"
+            fc-cache -f $HOME/.fonts
+          fi
           
           if which xelatex >/dev/null 2>&1; then
             echo "XeLaTeX verification:"
             xelatex --version | head -2
-            echo "Font installation completed"
+            echo "Font cache ready"
           else
             echo "Error: XeLaTeX installation failed"
             exit 1
