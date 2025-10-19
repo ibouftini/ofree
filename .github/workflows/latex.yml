@@ -16,17 +16,20 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
     
-    - name: Cache TeX Live Complete
-      id: cache
+    - name: Cache TeX Live
+      id: cache-texlive
       uses: actions/cache@v4
       with:
         path: ~/texlive
-        key: texlive-overleaf-complete-v3
+        key: texlive-basic-2024-v2-${{ hashFiles('**/*.tex', '**/*.sty', '**/*.cls') }}
+        restore-keys: |
+          texlive-basic-2024-v2-
+          texlive-basic-2024-
     
-    - name: Install Comprehensive TeX Live
-      if: steps.cache.outputs.cache-hit != 'true'
+    - name: Install TeX Live to user directory
+      if: steps.cache-texlive.outputs.cache-hit != 'true'
       run: |
-        echo "Installing comprehensive TeX Live (Overleaf-like setup)..."
+        echo "Installing TeX Live to ~/texlive..."
         
         # Create installation directory
         mkdir -p ~/texlive-temp
@@ -40,16 +43,19 @@ jobs:
         INSTALL_DIR=$(find . -name "install-tl-2*" -type d | head -1)
         cd "$INSTALL_DIR"
         
-        # Create comprehensive installation profile
-        cat > texlive.profile << 'EOF'
-        selected_scheme scheme-medium
-        TEXDIR ~/texlive/2023
-        TEXMFCONFIG ~/texlive/2023/texmf-config
-        TEXMFHOME ~/texlive/2023/texmf
-        TEXMFLOCAL ~/texlive/2023/texmf-local
-        TEXMFSYSCONFIG ~/texlive/2023/texmf-config
-        TEXMFSYSVAR ~/texlive/2023/texmf-var
-        TEXMFVAR ~/texlive/2023/texmf-var
+        # Get current year for TeX Live
+        YEAR=$(date +%Y)
+        
+        # Create installation profile for user directory
+        cat > texlive.profile << EOF
+        selected_scheme scheme-basic
+        TEXDIR ~/texlive/$YEAR
+        TEXMFCONFIG ~/texlive/$YEAR/texmf-config
+        TEXMFHOME ~/texlive/$YEAR/texmf
+        TEXMFLOCAL ~/texlive/$YEAR/texmf-local
+        TEXMFSYSCONFIG ~/texlive/$YEAR/texmf-config
+        TEXMFSYSVAR ~/texlive/$YEAR/texmf-var
+        TEXMFVAR ~/texlive/$YEAR/texmf-var
         option_adjustrepo 1
         option_autobackup 1
         option_desktop_integration 0
@@ -61,156 +67,302 @@ jobs:
         option_path 0
         option_post_code 1
         option_src 0
-        option_sys_bin ~/texlive/2023/bin
-        option_sys_info ~/texlive/2023/share/info
-        option_sys_man ~/texlive/2023/share/man
+        option_sys_bin ~/texlive/$YEAR/bin
+        option_sys_info ~/texlive/$YEAR/share/info
+        option_sys_man ~/texlive/$YEAR/share/man
         option_w32_multi_user 0
         EOF
         
-        # Install comprehensive scheme
+        # Install to user directory (no sudo needed)
         ./install-tl -profile texlive.profile
         
-        # Install additional collections for complete coverage
-        echo "Installing comprehensive package collections..."
-        ~/texlive/2023/bin/x86_64-linux/tlmgr install \
-          collection-latexextra collection-mathscience \
-          collection-pictures collection-bibtexextra \
-          collection-fontsrecommended collection-publishers \
-          algorithms algorithmicx algorithm2e \
-          booktabs longtable supertabular xtab \
-          mhchem chemfig chemmacros \
-          physics hepnames hepparticles \
-          circuitikz pgfgantt bchart \
-          listings minted pythontex \
-          siunitx units steinmetz \
-          subcaption wrapfig rotating \
-          enumitem paralist soul microtype \
-          geometry fancyhdr titlesec appendix \
-          biblatex natbib \
-          babel inputenc fontenc \
-          lipsum blindtext kantlipsum \
-          xcolor colortbl diagbox \
-          threeparttable tabu multirow \
-          hyperref url footmisc \
-          amsmath amssymb amsthm mathtools \
-          bm cancel nccmath empheq \
-          tikz pgfplots pgfplotstable \
-          float caption graphicx \
-          comment verbatim calc xspace \
-          datetime ifthen
+        # Find the actual bin directory (architecture-dependent)
+        BIN_DIR=$(find ~/texlive/$YEAR/bin -type d -name "*-linux" | head -1)
         
-        echo "TeX Live comprehensive installation completed!"
-        echo "Installed packages: $(~/texlive/2023/bin/x86_64-linux/tlmgr list --only-installed | wc -l)"
+        if [ -z "$BIN_DIR" ]; then
+          echo "Error: Could not find TeX Live bin directory after installation"
+          exit 1
+        fi
+        
+        echo "TeX Live installed to: $BIN_DIR"
+        
+        # Install essential packages for compilation
+        $BIN_DIR/tlmgr install \
+          latexmk \
+          amsmath amsfonts amscls \
+          graphics xcolor \
+          geometry fancyhdr \
+          hyperref url
+        
+        echo "TeX Live basic installation completed!"
     
-    - name: Setup TeX Live PATH
+    - name: Setup TeX Live PATH and verify
       run: |
-        # Add TeX Live to PATH
-        echo "$HOME/texlive/2023/bin/x86_64-linux" >> $GITHUB_PATH
+        # Get current year
+        YEAR=$(date +%Y)
+        
+        # Find the bin directory
+        BIN_DIR=$(find ~/texlive/$YEAR/bin -type d -name "*-linux" | head -1)
+        
+        if [ -z "$BIN_DIR" ]; then
+          echo "Error: Could not find TeX Live bin directory"
+          exit 1
+        fi
+        
+        # Add TeX Live to PATH for subsequent steps
+        echo "$BIN_DIR" >> $GITHUB_PATH
+        
+        # Export PATH for this step
+        export PATH="$BIN_DIR:$PATH"
         
         # Verify installation
-        export PATH="$HOME/texlive/2023/bin/x86_64-linux:$PATH"
-        which pdflatex
-        pdflatex --version
+        echo "=========================================="
+        echo "TeX Live Installation Verification"
+        echo "=========================================="
+        echo "Bin directory: $BIN_DIR"
+        echo ""
         
-        echo "Cache hit: ${{ steps.cache.outputs.cache-hit }}"
-        if [ "${{ steps.cache.outputs.cache-hit }}" = "true" ]; then
-          echo "✅ Using cached comprehensive TeX Live installation!"
+        which pdflatex || echo "ERROR: pdflatex not found"
+        pdflatex --version | head -2
+        echo ""
+        
+        which tlmgr || echo "ERROR: tlmgr not found"
+        tlmgr --version | head -1
+        echo ""
+        
+        echo "Cache status: ${{ steps.cache-texlive.outputs.cache-hit }}"
+        echo "=========================================="
+    
+    - name: Install Python for texliveonfly
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+    
+    - name: Install and verify texliveonfly
+      run: |
+        YEAR=$(date +%Y)
+        BIN_DIR=$(find ~/texlive/$YEAR/bin -type d -name "*-linux" | head -1)
+        export PATH="$BIN_DIR:$PATH"
+        
+        echo "Installing texliveonfly..."
+        tlmgr install texliveonfly
+        
+        # Verify the script exists
+        SCRIPT_PATH="$BIN_DIR/texliveonfly"
+        
+        if [ -f "$SCRIPT_PATH" ]; then
+          echo "✓ texliveonfly found at: $SCRIPT_PATH"
+          chmod +x "$SCRIPT_PATH"
         else
-          echo "✅ Fresh comprehensive TeX Live installation completed!"
+          echo "! texliveonfly not found as executable, checking for Python script..."
+          SCRIPT_PATH=$(find ~/texlive/$YEAR/texmf-dist/scripts/texliveonfly -name "texliveonfly.py" 2>/dev/null | head -1)
+          
+          if [ -f "$SCRIPT_PATH" ]; then
+            echo "✓ Found Python script at: $SCRIPT_PATH"
+            # Create wrapper script
+            cat > "$BIN_DIR/texliveonfly" << 'WRAPPER'
+#!/bin/bash
+YEAR=$(date +%Y)
+SCRIPT=$(find ~/texlive/$YEAR/texmf-dist/scripts/texliveonfly -name "texliveonfly.py" | head -1)
+python3 "$SCRIPT" "$@"
+WRAPPER
+            chmod +x "$BIN_DIR/texliveonfly"
+            echo "✓ Created wrapper script"
+          else
+            echo "ERROR: Could not find texliveonfly script!"
+            exit 1
+          fi
+        fi
+        
+        # Test if texliveonfly works
+        if texliveonfly --version 2>&1 | grep -q "texliveonfly"; then
+          echo "✓ texliveonfly is working!"
+        else
+          echo "! texliveonfly test inconclusive, will attempt to use anyway"
         fi
     
-    - name: Enhanced LaTeX Compilation
+    - name: Compile LaTeX with automatic package installation
       run: |
-        export PATH="$HOME/texlive/2023/bin/x86_64-linux:$PATH"
-        
         if [ ! -f "main.tex" ]; then
-          echo "❌ Error: main.tex not found!"
+          echo "Error: main.tex not found!"
           exit 1
         fi
         
-        echo "🔄 Compiling main.tex..."
+        echo "=========================================="
+        echo "Compiling main.tex with texliveonfly..."
+        echo "=========================================="
         
-        # First compilation attempt
-        pdflatex -interaction=nonstopmode -file-line-error main.tex
-        COMPILE_STATUS=$?
-        
-        # Check if compilation succeeded
-        if [ $COMPILE_STATUS -ne 0 ] || [ ! -f "main.pdf" ]; then
-          echo "❌ COMPILATION FAILED - ANALYZING ERRORS..."
+        # texliveonfly will automatically install missing packages
+        # Use explicit compiler flag to avoid ambiguity
+        if texliveonfly \
+          --compiler=pdflatex \
+          --arguments="-interaction=nonstopmode -file-line-error -shell-escape" \
+          main.tex; then
           
-          # Extract and highlight specific error types
-          echo "=== ERROR SUMMARY ==="
+          echo "=========================================="
+          echo "Initial compilation successful!"
+          echo "=========================================="
+        else
+          echo "=========================================="
+          echo "Compilation encountered issues!"
+          echo "=========================================="
           
-          # Missing packages/files
-          echo "📦 Missing Packages/Files:"
-          grep -n "LaTeX Error.*not found\|Package.*not found\|File.*not found" main.log | head -10 || echo "  None found"
-          
-          # Undefined commands
-          echo -e "\n🔍 Undefined Commands:"
-          grep -n "Undefined control sequence\|LaTeX Error.*undefined" main.log | head -10 || echo "  None found"
-          
-          # Math errors
-          echo -e "\n🔢 Math Mode Issues:"
-          grep -n "Missing.*math\|Extra.*math\|Math mode" main.log | head -10 || echo "  None found"
-          
-          # Citation/reference errors  
-          echo -e "\n📚 Reference/Citation Issues:"
-          grep -n "Reference.*undefined\|Citation.*undefined" main.log | head -10 || echo "  None found"
-          
-          # General LaTeX errors with line numbers
-          echo -e "\n🚨 Critical Errors:"
-          grep -n -A1 "^!.*\|LaTeX Error\|Error:" main.log | head -20 || echo "  None found"
-          
-          # Show problematic lines from source if available
-          echo -e "\n📝 SOURCE CONTEXT FOR ERRORS:"
-          ERROR_LINES=$(grep -o "main.tex:[0-9]*" main.log | head -5)
-          if [ ! -z "$ERROR_LINES" ]; then
-            echo "$ERROR_LINES" | while read error_line; do
-              line_num=$(echo $error_line | cut -d: -f2)
-              echo "--- Around line $line_num in main.tex ---"
-              sed -n "$((line_num-2)),$((line_num+2))p" main.tex | nl -v$((line_num-2)) 2>/dev/null || echo "Could not display context"
-              echo ""
-            done
-          else
-            echo "  No line numbers found in errors"
+          if [ -f "main.log" ]; then
+            echo ""
+            echo "=== Compilation Log (last 50 lines) ==="
+            tail -50 main.log
           fi
           
-          # Final attempt with more verbosity
-          echo "🔄 Attempting recompilation with detailed error reporting..."
-          pdflatex -interaction=errorstopmode -halt-on-error main.tex 2>&1 | tail -20 || true
+          # Don't exit yet - check if PDF was still generated
+          if [ ! -f "main.pdf" ]; then
+            echo ""
+            echo "FATAL: No PDF generated"
+            exit 1
+          else
+            echo ""
+            echo "WARNING: PDF was generated despite errors"
+          fi
+        fi
+        
+        # Show PDF info if generated
+        if [ -f "main.pdf" ]; then
+          echo ""
+          echo "PDF generated:"
+          ls -lh main.pdf
+        fi
+    
+    - name: Process bibliography and finalize
+      run: |
+        # Check if bibliography processing is needed
+        HAS_BIBLIOGRAPHY=false
+        
+        if grep -q "\\\\bibliography{" main.tex || \
+           grep -q "\\\\addbibresource{" main.tex || \
+           grep -q "\\\\printbibliography" main.tex; then
+          HAS_BIBLIOGRAPHY=true
+        fi
+        
+        if [ "$HAS_BIBLIOGRAPHY" = true ]; then
+          echo "=========================================="
+          echo "Bibliography detected - additional passes"
+          echo "=========================================="
           
-          echo -e "\n📋 FULL LOG TAIL (last 30 lines for context):"
-          tail -30 main.log
+          # Determine which bibliography processor to use
+          if grep -q "\\\\usepackage.*biblatex" main.tex || \
+             grep -q "\\\\addbibresource" main.tex; then
+            echo "Using biblatex/biber..."
+            
+            # Run biber
+            if biber main 2>&1 | tee biber.log; then
+              echo "✓ Biber completed successfully"
+            else
+              echo "! Biber encountered issues (this may be normal)"
+              cat biber.log
+            fi
+          else
+            echo "Using traditional bibtex..."
+            
+            # Run bibtex
+            if bibtex main 2>&1 | tee bibtex.log; then
+              echo "✓ BibTeX completed successfully"
+            else
+              echo "! BibTeX encountered issues (this may be normal)"
+              cat bibtex.log
+            fi
+          fi
           
+          # Run pdflatex twice more to resolve all references
+          # Use texliveonfly in case bibliography styles need packages
+          echo ""
+          echo "Running final compilation passes..."
+          
+          texliveonfly \
+            --compiler=pdflatex \
+            --arguments="-interaction=nonstopmode -file-line-error" \
+            main.tex
+          
+          pdflatex -interaction=nonstopmode -file-line-error main.tex
+          
+          echo "✓ Final passes completed"
+        else
+          echo "=========================================="
+          echo "No bibliography detected - single pass"
+          echo "=========================================="
+        fi
+        
+        # Final verification
+        if [ -f "main.pdf" ]; then
+          echo ""
+          echo "=========================================="
+          echo "Final PDF Information"
+          echo "=========================================="
+          ls -lh main.pdf
+          file main.pdf
+          
+          # Show any warnings from final log
+          if [ -f "main.log" ]; then
+            echo ""
+            echo "Warnings summary:"
+            grep -i "warning" main.log | head -10 || echo "No warnings found"
+          fi
+          
+          echo "=========================================="
+          echo "✓ Compilation complete!"
+          echo "=========================================="
+        else
+          echo "ERROR: Final PDF not found after all compilation steps!"
           exit 1
         fi
-        
-        # Success case
-        echo "✅ COMPILATION SUCCESSFUL!"
-        PDF_SIZE=$(stat -c%s main.pdf 2>/dev/null || stat -f%z main.pdf 2>/dev/null || echo "unknown")
-        echo "📄 Generated: main.pdf ($PDF_SIZE bytes)"
-        
-        # Show warnings if any
-        if grep -q "Warning" main.log; then
-          echo "⚠️  WARNINGS FOUND (first 5):"
-          grep -n "Warning" main.log | head -5
-        fi
-        
-        # Show compilation summary
-        PAGES=$(pdfinfo main.pdf 2>/dev/null | grep "Pages:" | awk '{print $2}' || echo "unknown")
-        echo "📊 Document: $PAGES pages"
     
     - name: Commit PDF
       run: |
         git config --local user.email "action@github.com"
-        git config --local user.name "LaTeX Compiler"
+        git config --local user.name "LaTeX Compiler Bot"
         
+        # Pull latest changes to avoid conflicts
+        git pull --rebase origin ${{ github.ref_name }} || {
+          echo "Pull failed, attempting to continue..."
+        }
+        
+        # Add the PDF
         git add main.pdf
         
+        # Check if there are changes to commit
         if ! git diff --staged --quiet; then
-          git commit -m "Auto-compile LaTeX: $(date '+%Y-%m-%d %H:%M:%S')"
-          git push
-          echo "📤 PDF committed successfully!"
+          git commit -m "Auto-compile LaTeX: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          
+          # Push with retry logic
+          MAX_RETRIES=3
+          RETRY=0
+          SUCCESS=false
+          
+          while [ $RETRY -lt $MAX_RETRIES ]; do
+            if git push; then
+              echo "=========================================="
+              echo "✓ PDF committed and pushed successfully!"
+              echo "=========================================="
+              SUCCESS=true
+              break
+            else
+              RETRY=$((RETRY + 1))
+              echo "Push failed, attempt $RETRY/$MAX_RETRIES..."
+              
+              if [ $RETRY -lt $MAX_RETRIES ]; then
+                sleep $((RETRY * 2))
+                git pull --rebase origin ${{ github.ref_name }} || {
+                  echo "Pull failed during retry"
+                  exit 1
+                }
+              fi
+            fi
+          done
+          
+          if [ "$SUCCESS" = false ]; then
+            echo "Failed to push after $MAX_RETRIES attempts"
+            exit 1
+          fi
         else
-          echo "ℹ️  No changes to commit"
+          echo "=========================================="
+          echo "No changes to commit - PDF is up to date"
+          echo "=========================================="
         fi
