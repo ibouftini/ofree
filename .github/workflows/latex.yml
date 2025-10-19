@@ -402,14 +402,18 @@ jobs:
         echo "TeX Live installed successfully"
         echo "Binary directory: $BIN_DIR"
         
+        echo "Installing essential packages and compilers..."
         $BIN_DIR/tlmgr install \
+          collection-latex \
+          collection-xetex \
+          collection-luatex \
           latexmk \
           amsmath amsfonts amscls \
           graphics xcolor \
           geometry fancyhdr \
           hyperref url
         
-        echo "TeX Live basic installation completed"
+        echo "TeX Live installation completed with all compilers"
         echo "----------------------------------------"
     
     - name: Setup TeX Live PATH
