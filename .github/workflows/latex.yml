@@ -306,11 +306,10 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/texlive
-        key: texlive-2025-v4-${{ runner.os }}-xe${{ steps.detect-compiler.outputs.NEEDS_XELATEX }}-lua${{ steps.detect-compiler.outputs.NEEDS_LUALATEX }}
+        key: texlive-2025-v5-${{ runner.os }}
         restore-keys: |
-          texlive-2025-v4-${{ runner.os }}-xe${{ steps.detect-compiler.outputs.NEEDS_XELATEX }}-lua
-          texlive-2025-v4-${{ runner.os }}-xe${{ steps.detect-compiler.outputs.NEEDS_XELATEX }}
-          texlive-2025-v4-${{ runner.os }}
+          texlive-2025-v5-${{ runner.os }}
+          texlive-2025-v5
     
     - name: Check TeX Live installation status
       if: steps.detect-changes.outputs.HAS_CHANGES == 'true'
@@ -900,10 +899,9 @@ jobs:
           
           FILES_TO_COMPILE="${{ steps.detect-changes.outputs.FILES_TO_COMPILE }}"
           
+          COMPILE_COUNT=0
           if [ -n "$FILES_TO_COMPILE" ]; then
             COMPILE_COUNT=$(echo "$FILES_TO_COMPILE" | wc -w)
-          else
-            COMPILE_COUNT=0
           fi
           
           echo "- **Files Compiled:** $COMPILE_COUNT" >> $GITHUB_STEP_SUMMARY
