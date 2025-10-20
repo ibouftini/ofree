@@ -1,0 +1,61 @@
+% From mitthesis package
+% Documentation: https://ctan.org/pkg/mitthesis
+
+\ProvidesFile{mitthesis-stix2.tex}[2025/04/21 v1.07 Load STIX Two text and math fonts]
+
+%% STIX Two text and math fonts with Heros sans serif font and Inconsolata monospaced font
+%
+%	These fonts are in TeX Live and on CTAN. They are included in a complete LaTeX installation. 
+%	They are also available at: 
+%				https://github.com/stipub/stixfonts 
+%				http://www.gust.org.pl/projects/e-foundry/tex-gyre 
+%				https://ctan.org/tex-archive/fonts/inconsolata
+%
+\ifpdftex
+	\ClassError{\ClassName}{The stix2 fontset requires a unicode engine. Defaulting to CMR fonts.}{Use LuaLatex to run with the class option [fontset=stix2]}
+	\RequirePackage[T1]{fontenc}	
+	\RequirePackage{bm}
+\else
+	\ClassNoteNoLine{\ClassName}{Loading STIX Two text and math fonts with Heros sans serif font and Inconsolata monospaced font}
+	%
+    \RequirePackage[warnings-off={mathtools-colon,mathtools-overbracket}]{unicode-math}
+    % suppress warnings about lack of integration between mathtools and unicode-math
+    % unicode-math loads the fontspec package
+	%
+    \setmainfont{STIXTwoText}[
+       	Extension = .otf,
+    	UprightFont = *-Regular,
+    	ItalicFont = *-Italic,
+    	BoldFont = *-Bold,
+    	BoldItalicFont = *-BoldItalic,
+		SlantedFont = *-Italic,
+	]
+	\setsansfont{texgyreheros}[ 
+		WordSpace = {1,1.4,1},
+		Extension = .otf,
+    	UprightFont = *-regular,
+    	ItalicFont = *-italic,
+    	BoldFont = *-bold,
+    	BoldItalicFont = *-bolditalic,
+		Numbers = Lining,
+    	Scale=0.91,% 
+	]        
+	\setmonofont{Inconsolatazi4}[
+        Scale=1.035,% 2024/10/13
+        Extension = .otf,
+        UprightFont = *-Regular,
+        ItalicFont = *-Regular,% has no italic face
+        BoldFont = *-Bold, 
+    	BoldItalicFont = *-Bold,% has no bold italic face
+        RawFeature = {+ss01,+ss02}, % drop +ss03 (upright quotes), 2025/04/18
+    ]             
+	\setmathfont{STIXTwoMath-Regular}[
+    	Scale=MatchUppercase,
+    	Extension = .otf,
+%       Color=NavyBlue, 
+    	RawFeature = {+ss01, -ss02, -ss08},
+   ]
+   % ss01 -- switch calligraphic to script; +ss02 -- variants of g, u, v, w, z; +ss08 -- upright integrals
+   %
+   \newcommand*{\FRAC}[1]{{\addfontfeature{Fractions=On}#1}}% use OpenType feature for fractions, \FRAC{1/2} 
+\fi

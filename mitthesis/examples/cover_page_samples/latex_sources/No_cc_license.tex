@@ -1,0 +1,117 @@
+% !TEX TS-program = LuaLaTeX
+
+% Author: John H. Lienhard (c) 2025. Reuse under the MIT license: https://ctan.org/license/mit 
+% Version 1.03, 2025/05/01
+
+% Documentation: https://ctan.org/pkg/mitthesis
+
+%% Don't modify the \DocumentMetadata command unless you know what it does. 
+%% If this command throws an "undefined" error, your latex system is out of date: try commenting this command out.
+\DocumentMetadata
+{
+	testphase={phase-III,math,table,firstaid,title},
+	pdfstandard = ua-2,
+	pdfversion  = 2.0,
+	lang		= en-US,
+}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\documentclass[]{mitthesis}
+
+\usepackage{microtype}
+
+
+%%%%%%%%%%%  Metadata  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Most of the document metadata is created automatically. 
+% The following items should be adjusted to match your work. <================= !!!!!!!!!!
+
+\hypersetup{%
+	pdfsubject={Template for writing MIT theses with the mitthesis class},
+	% Change this to briefly state topic of your thesis 
+% 
+	pdfkeywords={Massachusetts Institute of Technology, MIT},
+	% Add keywords that will help search engines and libraries to find your work.
+	% Includes the name[s] of the author[s] 
+	% (If you have used \DocumentMetadata, at line 15, you can just put "\CopyrightAuthor," for the names.)
+%
+	pdfurl={},
+	% If you have a url for the thesis, put it here. Otherwise delete this.
+	% (MIT Libraries will put your thesis in DSPACE with a persistent url after you submit it.)
+%	
+	pdfcontactemail={},
+	% You can put a [permanent] email address into the metadata, if you like.
+	% Otherwise delete this.
+%
+	pdfauthortitle={},
+	% If you have a title, you can include it here.
+}
+
+%%%%%%%%%%%%%%  End preamble %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+\author{\YourName}
+%%% edit the following commands to match your thesis %%%%%%%%%%
+
+\title{The Atomic Theory as Applied To Gases, with Some Experiments on the Viscosity of Air}
+
+% \Author{Author full name}{Author department}[Author's first PREVIOUS degree][Author's second PREVIOUS degree][...
+% Note that third, fourth, fifth, and sixth arguments are optional [] and may be omitted
+
+% note on names: most of the following names are made up; Silas Holman was a professor at MIT in the 19th century.
+
+\Author{Silas W. Holman}{Department of Physics}%[B.S. Physics, MIT, 1876][MBA, Ferengi School of Management, 2022]
+%\Author{Luisa Hernández}{Department of Research}[B.S. Mechanical Engineering, UCLA, 2018][M.S. Stellar Interiors, Vulcan Science Academy, 2020][MBA, Ferengi School of Management, 2022]
+
+% Use once for each degree fulfilled by thesis
+% For two degrees from one department, leave the department argument blank for the second degree {}.
+\Degree{Bachelor of Science in Physics}{Department of Physics}
+%\Degree{Master of Science in Physics}{}
+%\Degree{Bachelor of Science in Mechanical Engineering}{Department of Mechanical Engineering}
+
+% If there is more than one supervisor, use the \Supervisor command for each.
+\Supervisor{Edward C. Pickering}{Professor of Physics}
+%\Supervisor{Secunda Castor}{Professor of Research}
+%\Supervisor{Quintus Castor}{Professor of Log Dams}
+
+% Professor who formally accepts theses for your department (e.g., the Graduate Officer, Professor Sméagol,...)
+% If more than one department, use more than once
+% **If you need to reduce vertical space, put the acceptor title in the second argument and leave the third blank {}.**
+\Acceptor{Primus Castor}{Professor of Wetlands Engineering}{Undergraduate Officer, Department of Physics}
+%\Acceptor{Tertius Castor}{Professor of Log Dams}{Graduate Officer, Department of Research}
+%\Acceptor{Quarta Castor}{Professor of Lodge Building}{Graduate Officer, Department of Mechanical Engineering}
+
+% If your title page is overflowing (from too many names, degrees, etc.), you can scale 
+%    down the Signature block at the bottom with this command, or use another creative solution...
+%\SignatureBlockSize{\small} %\SignatureBlockSize{\footnotesize}
+
+% Usage: \DegreeDate{Month}{year}
+% Valid degree months are September, February, or June.  
+\DegreeDate{June}{1876}
+
+% Date that final thesis is submitted to department
+\ThesisDate{May 18, 1876}
+
+
+%%%%%%  Choose whether to have a CREATIVE COMMONS License  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% If you are using a cc license, put details of your cc license here. 
+% Omit this command if you are not using a cc license.
+%
+%\CClicense{CC BY-NC-ND 4.0}{https://creativecommons.org/licenses/by-nc-nd/4.0/}
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%% Titlepage
+\maketitle
+
+% The abstract environment creates all the required headers and footnote. 
+% You only need to add the text of the abstract itself in the file abstract.tex
+\begin{abstract}
+	\input{abstract.tex}% in this case, use \input rather than \include because you are inside an environment
+\end{abstract}
+
+\end{document}	

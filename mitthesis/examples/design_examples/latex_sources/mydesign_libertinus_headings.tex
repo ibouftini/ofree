@@ -1,0 +1,118 @@
+% !TEX TS-program = LuaLaTeX
+% From mitthesis package
+% Documentation: https://ctan.org/pkg/mitthesis
+
+\ProvidesFile{mydesign_libertinus_headings.tex}[2025/04/27 v1.00]
+
+% ==> you can change this however you want. The content below is just for illustration. <==
+
+% This illustration assumes that the fontset=libertinus is selected under lualatex.
+%	 Chapter and section headings are use additional font features (historical ligatures and stylistic alternates)
+%	 Caption labels are set in a boldface font.
+%
+%	 To avoid distracting typographic design, you may want to limit the additional font features to the chapter headings only.
+%
+% See: https://github.com/alerque/libertinus/blob/a6487570b8fdcfa69557744f5e5c5d044de0a9db/documentation/Opentype-Features.pdf
+
+%%%%%%%%%%  Color support  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% Color package: xcolor. 
+%% Change this if you prefer something else
+
+\usepackage[dvipsnames,svgnames,x11names]{xcolor}
+
+%% can add option [table] to xcolor to use color in tables (see xcolor documentation)
+
+
+%%%%%%%%%%  Hyperlink and line number colors  %%%%%%%%%%%%%%
+
+\AtBeginDocument{
+    % Using color names from xcolor package
+    \hypersetup{
+    	linkcolor=Blue3,
+    	citecolor=Blue3,
+    	urlcolor=violet,
+    	filecolor=red, 
+    	anchorcolor=yellow,%  not all pdf viewers recognize this field (although Firefox does): hyperref issues a warning, which can be ignored
+    	}
+    %
+    \ifmit@lineno
+	    \renewcommand{\linenumberfont}{\sffamily\mdseries\tiny\color{violet}}% line numbers will be sans-serif, medium weight, tiny, and violet
+	\fi
+}
+
+%%%%%%%%%  Caption support  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% 
+% see documentation for details of how to customize captions
+
+\RequirePackage{caption}
+\RequirePackage{subcaption}
+% This sets caption labels in bold face type. 
+	\DeclareCaptionLabelFormat{boldlabel}{\textbf{{#1\ #2}}}
+	\captionsetup[figure]{labelformat=boldlabel,labelsep=quad}% change to boldface label with separation of one \quad
+	\captionsetup[table]{labelformat=boldlabel,labelsep=quad} % change to boldface label with separation of one \quad
+
+%% This simpler approach works if tagging is not active
+%	\captionsetup[figure]{labelfont={bf},labelsep=colon} % change to boldface label with colon separator
+%	\captionsetup[table]{labelfont={bf}, labelsep=colon} % change to boldface label with colon separator
+
+
+%%%%%%%%%  Customize list environments  %%%%%%%%%%%%%%%%%%%%
+% 
+% see documentation of enumitem package for details of how to customize lists
+
+%\RequirePackage{enumitem}
+
+
+%%%%%%%%%  Customize titles and section headings  %%%%%%%%%%
+
+\ExplSyntaxOn
+\str_if_eq:VnF \mit@fontset {libertinus}
+	{ 
+		\str_gset:Nn \mit@fontset {libertinus}
+	}
+\ExplSyntaxOff
+
+\ifpdftex\providecommand*{\addfontfeatures}[1]{\relax}\fi
+
+
+%%  See: https://github.com/alerque/libertinus/blob/a6487570b8fdcfa69557744f5e5c5d044de0a9db/documentation/Opentype-Features.pdf
+
+%% Adds some font features to numbered chapter heading: special versions of J, K, R (ss02); two "historical" ligatures (hlig); stylistic alternate characters (salt).
+\patchcmd{\@makechapterhead}{\Huge}{\addfontfeatures{RawFeature={+hlig,+ss02,+salt}}\Huge}{}{}
+\patchcmd{\@makechapterhead}{\huge}{\addfontfeatures{RawFeature={+hlig,+ss02,+salt}}\huge}{}{}
+
+%% Adds some font features to UNnumbered chapter names: special versions of J, K, R (ss02); two "historical" ligatures (hlig); stylistic alternate characters (salt).
+\patchcmd{\@makeschapterhead}{\Huge}{\addfontfeatures{RawFeature={+hlig,+ss02,+salt}}\Huge}{}{}
+
+
+% To directly modify section headings as follows, see https://latexref.xyz/dev/latex2e.html#g_t_005c_0040startsection
+% This adds the same fontfeatures section, subsection, and subsubsection headings (compare to report.cls)
+% Note - libertinus-math has bold characters, but not a boldface math font (so don't use \mathversion{bold})
+\renewcommand\section{\@startsection {section}{1}{\z@}%
+                                   {-3.5ex \@plus -1ex \@minus -.2ex}%
+                                   {2.3ex \@plus.2ex}%
+                                   {\addfontfeatures{RawFeature={+hlig,+ss02,+salt}}\Large\bfseries\raggedright}}
+\renewcommand\subsection{\@startsection{subsection}{2}{\z@}%
+                                     {-3.25ex\@plus -1ex \@minus -.2ex}%
+                                     {1.5ex \@plus .2ex}%
+                                     {\addfontfeatures{RawFeature={+hlig,+ss02,+salt}}\large\bfseries\raggedright}}
+\renewcommand\subsubsection{\@startsection{subsubsection}{3}{\z@}%
+                                     {-3.25ex\@plus -1ex \@minus -.2ex}%
+                                     {1.5ex \@plus .2ex}%
+                                     {\addfontfeatures{RawFeature={+hlig,+ss02,+salt}}\normalsize\bfseries}}
+
+
+
+%%%%%%%%%  Change page margins  %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% 
+% The default thesis margin is 1 inch all around. You may want different margins (e.g., to add a gutter for binding),
+% in which case you can use the \newgeometry command from the geometry package.  Refer to the package documentation
+% for details.
+%
+% mitthesis defaults: [top=1in,bottom=1in,left=1in,right=1in,marginparwidth=50pt,headsep=12pt,footskip=0.5in]
+%
+% The following tells the geometry package to use a two-sided layout with a 1 cm binding offset on the inside 
+% 	and 1 inch margins all around, reducing textwidth slightly (by 0.7 cm). See geometry documentation, Section 8.2.
+%
+%\newgeometry{twoside, bindingoffset=1cm,margin=1in,marginparwidth=50pt,headsep=12pt,footskip=0.5in}
