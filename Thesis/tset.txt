@@ -1,0 +1,151 @@
+@book{Sutton1998,
+  added-at = {2019-07-13T10:11:53.000+0200},
+  author = {Sutton, Richard S. and Barto, Andrew G.},
+  biburl = {https://www.bibsonomy.org/bibtex/2f46601cf8b13d39d1378af0d79438b12/lanteunis},
+  edition = {Second},
+  interhash = {ac6b144aaec1819919a2fba9f705c852},
+  intrahash = {f46601cf8b13d39d1378af0d79438b12},
+  keywords = {},
+  publisher = {The MIT Press},
+  timestamp = {2019-07-13T10:11:53.000+0200},
+  title = {Reinforcement Learning: An Introduction},
+  url = {http://incompleteideas.net/book/the-book-2nd.html},
+  year = {2018 }
+}
+
+@article{Bellman1957,
+title = {Dynamic programming and stochastic control processes},
+journal = {Information and Control},
+volume = {1},
+number = {3},
+pages = {228-239},
+year = {1958},
+issn = {0019-9958},
+doi = {https://doi.org/10.1016/S0019-9958(58)80003-0},
+url = {https://www.sciencedirect.com/science/article/pii/S0019995858800030},
+author = {Richard Bellman}
+}
+
+@article{(Watkins),
+  title={Q-learning},
+  author={Watkins, Christopher JCH and Dayan, Peter},
+  journal={Machine learning},
+  volume={8},
+  number={3-4},
+  pages={279--292},
+  year={1992},
+  publisher={Springer}
+}
+
+
+@inproceedings{COMA,
+author = {Foerster, Jakob N. and Farquhar, Gregory and Afouras, Triantafyllos and Nardelli, Nantas and Whiteson, Shimon},
+title = {Counterfactual multi-agent policy gradients},
+year = {2018},
+isbn = {978-1-57735-800-8},
+publisher = {AAAI Press},           
+booktitle = {Proceedings of the Thirty-Second AAAI Conference on Artificial Intelligence and Thirtieth Innovative Applications of Artificial Intelligence Conference and Eighth AAAI Symposium on Educational Advances in Artificial Intelligence},
+articleno = {363},
+numpages = {9},
+location = {New Orleans, Louisiana, USA},
+series = {AAAI'18/IAAI'18/EAAI'18}
+}
+
+
+@inbook{IQL,
+author = {Tan, Ming},
+title = {Multi-agent reinforcement learning: independent vs. cooperative agents},
+year = {1997},
+isbn = {1558604952},
+publisher = {Morgan Kaufmann Publishers Inc.},
+address = {San Francisco, CA, USA},
+booktitle = {Readings in Agents},
+pages = {487–494},
+numpages = {8}
+}
+
+@inproceedings{LOLA,
+author = {Foerster, Jakob and Chen, Richard Y. and Al-Shedivat, Maruan and Whiteson, Shimon and Abbeel, Pieter and Mordatch, Igor},
+title = {Learning with Opponent-Learning Awareness},
+year = {2018},
+publisher = {International Foundation for Autonomous Agents and Multiagent Systems},
+address = {Richland, SC},
+booktitle = {Proceedings of the 17th International Conference on Autonomous Agents and MultiAgent Systems},
+pages = {122–130},
+numpages = {9},
+keywords = {deep reinforcement learning, general-sum, iterated prisoners dilemma, multi-agent learning},
+location = {Stockholm, Sweden},
+series = {AAMAS '18}
+}
+
+
+@article{QMIX,
+author = {Rashid, Tabish and Samvelyan, Mikayel and De Witt, Christian Schroeder and Farquhar, Gregory and Foerster, Jakob and Whiteson, Shimon},
+title = {Monotonic value function factorisation for deep multi-agent reinforcement learning},
+year = {2020},
+issue_date = {January 2020},
+publisher = {JMLR.org},
+volume = {21},
+number = {1},
+issn = {1532-4435},
+journal = {J. Mach. Learn. Res.},
+month = {jan},
+articleno = {178},
+numpages = {51},
+keywords = {multi-agent coordination, multi-agent learning, reinforcement learning}
+}
+
+
+@unknown{QTRAN,
+author = {Son, Kyunghwan and Kim, Daewoo and Kang, Wan and Hostallero, David Earl and Yi, Yung},
+year = {2019},
+month = {05},
+pages = {},
+title = {QTRAN: Learning to Factorize with Transformation for Cooperative Multi-Agent Reinforcement Learning}
+}
+
+
+@inproceedings{VQN,
+author = {Sunehag, Peter and Lever, Guy and Gruslys, Audrunas and Czarnecki, Wojciech Marian and Zambaldi, Vinicius and Jaderberg, Max and Lanctot, Marc and Sonnerat, Nicolas and Leibo, Joel Z. and Tuyls, Karl and Graepel, Thore},
+title = {Value-Decomposition Networks For Cooperative Multi-Agent Learning Based On Team Reward},
+year = {2018},
+publisher = {International Foundation for Autonomous Agents and Multiagent Systems},
+booktitle = {Proceedings of the 17th International Conference on Autonomous Agents and MultiAgent Systems},
+pages = {2085–2087},
+numpages = {3},
+keywords = {collaborative, dqn, multi-agent, neural networks, q-learning, reinforcement learning, value-decomposition},
+location = {Stockholm, Sweden},
+series = {AAMAS '18}
+}
+
+
+@inproceedings{PED,
+  title={Inducing Cooperation through Reward Reshaping based on Peer Evaluations in Deep Multi-Agent Reinforcement Learning},
+  author={David Earl Hostallero and Daewoo Kim and Sang-chul Moon and Kyunghwan Son and Wan Ju Kang and Yung Yi},
+  booktitle={Adaptive Agents and Multi-Agent Systems},
+  year={2020},
+  url={https://api.semanticscholar.org/CorpusID:218626073}
+}
+
+
+@ARTICLE{FCLT,
+  author={Zegers, Federico M. and Hale, Matthew T. and Shea, John M. and Dixon, Warren E.},
+  journal={IEEE Transactions on Control of Network Systems}, 
+  title={Event-Triggered Formation Control and Leader Tracking With Resilience to Byzantine Adversaries: A Reputation-Based Approach}, 
+  year={2021},
+  volume={8},
+  number={3},
+  pages={1417-1429},
+  doi={10.1109/TCNS.2021.3068348}}
+
+
+
+@misc{Aim,
+  author = {{Africa in Motion (AIM)}},
+  title = {Mission},
+  year = {2024},
+  url = {https://aim.um6p.ma/en/mission/},
+  note = {Accessed: 2024-06-30}
+}
+
+

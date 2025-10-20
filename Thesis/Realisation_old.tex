@@ -1,0 +1,653 @@
+\chapter{Experiments and Results}
+
+
+% \newpage
+
+\section*{Introduction}
+\label{sec:introduction}
+
+This chapter presents a comprehensive empirical evaluation of our proposed Learning-Informed Masking Framework. As established in the previous chapter, our work builds upon the Multi-Agent Masked Auto-Encoder (MA2E) architecture, a powerful method for inferring global information from local observations. However, we identified a key limitation in the original MA2E: its reliance on a policy-agnostic, random masking strategy. This approach creates a disconnect between the self-supervised reconstruction task and the primary reinforcement learning objective.
+
+The central thesis of our work is that for optimal performance, these two tasks must be dynamically aligned. This chapter aims to empirically validate our core hypothesis: that using an agent's own training dynamics to guide the representational learning process yields a more efficient and effective learning curriculum. Specifically, we will test whether our proposed Learning-Informed Masking—which leverages the Temporal Difference (TD) error to focus the autoencoder's attention on the most uncertain agents—yields superior performance over the original random masking approach.
+
+To validate this, we will benchmark our framework directly against the baseline original MA2E. This focused comparison is designed to isolate and measure the impact of our intelligent masking strategy. The experiments are conducted on the challenging StarCraft Multi-Agent Challenge (SMAC) \parencite{smac} and its more demanding successor, SMACv2 \parencite{smacv2} , to test the limits of coordination and generalization under partial observability.
+
+
+%  \footnote{\url{https://www.teradata.com/} (visité le 11/08/2020).} \lipsum[2]
+
+
+\section{Experimental Details}
+In this section, we introduce the environments used in the experiments, the baseline algorithm, as well as the hyperparameters and computational resources. Experiments are carried out on an NVIDIA RTX A5000 GPU (24.6\,GB VRAM) and an Intel\textregistered\ Xeon\textregistered\ W-2235 CPU (6-core, 12-thread), with 32\,$\mathrm{GB}$ DDR4 RAM and CUDA 12.4 support. All algorithms are implemented based on the open-source framework pymarl2\footnote{From: \url{https://github.com/hijkzzz/pymarl2}}  \parencite{pymarl2} which is an augmented version of pymarl\footnote{From: \url{https://github.com/oxwhirl/pymarl}}. Both are licensed under Apache License 2.0. 
+ All the experiments are conducted during $2 \times 10^6$ time steps for each run, and we report \textit{the average win rates} with the shaded standard error from three different random seeds.
+
+\subsection{Environments}
+\subsubsection{SMAC}
+
+The StarCraft Multi-Agent Challenge (SMAC) \parencite{smac} is one of the benchmarks widely utilized in research to evaluate MARL algorithms. In SMAC, units from the strategy video game StarCraft  engage in combat in diverse scenarios. The objective is for multiple agents to collaborate to defeat the enemy forces. The scenarios are categorized by difficulty  Table~\ref{tab:smac_senarios_part1} and Table~\ref{tab:smac_senarios_part2}.
+% , and we primarily conduct experiments in \texttt{HARD} and \texttt{SuperHARD} scenarios.
+
+\noindent\textbf{Note:} The objective in all scenarios in Table~\ref{tab:smac_scenarios} is to defeat all enemy units by employing the strategy noted in the \textbf{Type} column.
+
+\begin{table}[H]
+\centering
+% \caption{A detailed description of the SMAC scenarios used in the experiment.}
+
+\renewcommand{\arraystretch}{1.6} 
+
+\begin{tabular}{ccccc}
+\hline
+\textbf{Scenario} & \textbf{Difficulty} & \textbf{Ally Units} & \textbf{Enemy Units} & \textbf{Type} \\
+%  \hline
+% 2s\_vs\_1sc & EASY & 2 Stalkers & 1 Spine Crawler & micro-trick: alternating fire \\
+\hline
+3s\_vs\_3z & EASY & 3 Stalkers & 3 Zealots & micro-trick: kiting \\
+\hline
+3s\_vs\_5z & HARD & 3 Stalkers & 5 Zealots & micro-trick: kiting \\
+% \hline
+% 2c\_vs\_64zg & HARD & 2 Colossi & 64 Zerglings & micro-trick: positioning \\
+% \hline
+% MMM & HARD & \makecell{1 Medivac \\ 2 Marauders \\ 7 Marines} & \makecell{1 Medivac \\ 2 Marauders \\ 7 Marines} & heterogeneous \& symmetric \\
+% \hline
+% corridor & Super HARD & 6 Zealots & 24 Zerglings & micro-trick: wall off \\
+\hline
+6h\_vs\_8z & Super HARD & 6 Hydras & 8 Zealots & micro-trick: focus fire \\
+% \hline
+% MMM2 & Super HARD & \makecell{1 Medivac \\ 2 Marauders \\ 7 Marines} & \makecell{1 Medivac \\ 3 Marauders \\ 8 Marines} & heterogeneous \& asymmetric \\
+% \hline
+% 1o\_2r\_vs\_4r & - & \makecell{1 Overlord \\ 2 Roaches} & 4 Roaches & communication \\
+\hline
+\end{tabular}
+\caption{A detailed description of the SMAC scenario used in the experiment.}
+\label{tab:smac_scenarios}
+\end{table}
+\subsubsection{SMACv2}
+
+SMACv2 \parencite{smacv2}  was proposed to address the shortcomings of the original SMAC, particularly its lack of stochasticity and meaningful partial observability (for more details \parencite{smacv2_review}) . Therefore, SMACv2 differs from SMAC in three main aspects:
+
+\begin{enumerate}
+    \item \textbf{Random Unit Composition:} In SMAC, the units in each matchup are fixed, whereas in SMACv2, different unit types are randomly generated for each episode based on probabilities.
+    \item \textbf{Probabilistic Observation:} In SMACv2, if one agent observes an enemy, other nearby agents may not immediately identify the same enemy, even if it is within their observation range.This contrasts with SMAC, where an enemy observed by one agent is simultaneously visible to all other agents.
+    \item \textbf{Randomized Spawn Locations:} The starting positions for units are randomized and determined by one of two types: \texttt{surround} or \texttt{reflect}. \texttt{surround} places allied units in a formation encircling the enemy, while \texttt{reflect} involves a head-on confrontation.
+
+\begin{figure}[H]
+    \centering
+   
+        
+    \includegraphics[width= 0.7\linewidth]{img_pfe/start_pos_smacv2.PNG}
+ 
+  
+                \caption{Two different types of start positions in SMACv2.(Adapted from \parencite{ma2e})}
+        \label{fig:start_pos_smacv2}
+\end{figure}
+    
+\end{enumerate}
+
+\subsection{Baseline Algorithm}
+
+Our experiments are designed to isolate the impact of our Learning-Informed masking strategy. Therefore, the baseline for all comparisons is the \textbf{original \ac{MA2E} architecture}, which utilizes a \textbf{random masking strategy} during training. Both our proposed framework and the baseline are integrated into the \textbf{\ac{QMIX}} algorithm.
+
+
+\subsection{Hyperparameters}
+
+To ensure a controlled and fair comparison, our proposed framework (\textbf{QMIX + LI-MA2E}) and the baseline (\textbf{QMIX + MA2E}) share the same core network architecture and hyperparameters. The parameters for the QMIX backbone algorithm are listed in Table \ref{tab:qmix_hyperparams}, and the parameters for the MA²E module are listed in Table \ref{tab:ma2e_hyperparams}. These values were used for all experimental runs.
+
+\begin{table}[H]
+\centering
+
+\renewcommand{\arraystretch}{1.5} 
+\begin{tabular}{lc} 
+\hline
+\textbf{Hyperparameter} & \textbf{Value} \\
+\hline 
+Optimizer & Adam \\
+Learning Rate (lr) & 0.001 \\
+Batch Size & 128 \\
+Replay Buffer Size & 1000 \\
+Discount Factor ($\gamma$) & 0.99 \\
+TD-Lambda ($\lambda$) & 0.6 \\
+Epsilon Anneal Steps & 100000 \\
+RNN Hidden Dimension & 128 \\
+QMIX Mixing Embedding Dimension & 32 \\
+\hline
+\end{tabular}
+\caption{Hyperparameters for the QMIX Backbone Algorithm.}
+\label{tab:qmix_hyperparams}
+\end{table}
+
+\begin{table}[H]
+\centering
+
+\renewcommand{\arraystretch}{1.5} 
+\begin{tabular}{lc} 
+\hline
+\textbf{Hyperparameter} & \textbf{Value} \\
+\hline 
+Input Trajectory Length & 5 \\
+Batch Size & 32 \\
+Input Embedding Dimension & 24 \\
+Number of Attention Heads & 4 \\
+Number of Encoder Layers & 3 \\
+Number of Decoder Layers & 2 \\
+Steps for Fine-Tuning & 500 \\
+Pre-training Threshold & 0.015 \\
+\hline
+\end{tabular}
+\caption{Hyperparameters for the MA²E Module.}
+\label{tab:ma2e_hyperparams}
+\end{table}
+\section{Developing the Learning-Informed Masking Score}
+% \section{Comparative Analysis of Agent Scoring Methods}
+\label{sec:scoring_methods}
+
+The core of our \textbf{LI-MA2E framework} is the ability to intelligently mask \textit{poorly performing} agents. However, defining \textit{poor performance} is not simple. To determine the most effective metric, we designed and empirically evaluated several candidate scoring methodologies, each with a unique theoretical motivation. This section details our investigation into these scoring methods, their underlying rationales, their limitations, and the results that led to our final design choice.
+\subsection{Method 1: Temporal Difference Error with Exponential Moving Average (EMA)}
+\label{subsec:ema_method}
+
+% Our initial approach to identifying poorly performing agents was to track their long-term performance stability. We chose the Temporal Difference (TD) error as the fundamental metric for this task. The TD-error, generated during the training of the backbone algorithm, represents the "surprise" or prediction error of an agent's value function for a given transition. A high TD-error is therefore a principled signal that an agent's understanding of its state-action values is inaccurate, making it a prime candidate for targeted representation learning. 
+% Our first hypothesis was that smoothing this error signal over time using an \ac{EMA} would provide a stable measure of an agent's overall learning quality, filtering out noisy, single-step errors.
+
+
+
+Our initial approach to identifying poorly performing agents was to track their long-term performance stability. We chose the Temporal Difference (TD) error as the fundamental metric for this task. The TD-error, generated during the training of the backbone  algorithm, represents the "surprise" or prediction error of an agent's value function for a given transition. 
+% Mathematically, the TD-error ($\delta_t$) for a given state-action pair is defined as:
+% \begin{equation}
+%     \delta_t = (r_{t+1} + \gamma \max_{a'} Q(s_{t+1}, a')) - Q(s_t, a_t)
+%     \label{eq:td_error}
+% \end{equation}
+% A high absolute TD-error, $|\delta_t|$, is therefore a principled signal that an agent's understanding of its state-action values is inaccurate, making it a prime candidate for targeted representation learning. 
+
+\paragraph{why \ac{TD} errorr as metric  ?} 
+TD error quantifies the difference between the predicted value of a state-action pair and a better-informed estimate based on the next state:
+
+\begin{equation}
+    \delta_t = 
+    \underbrace{\left(r_{t+1} + \gamma \max_{a'} Q(s_{t+1}, a')\right)}_{\text{TD target}} 
+    - Q(s_t, a_t)
+    \label{eq:td_error}
+\end{equation}
+
+\begin{itemize}
+    \item $r_{t+1}$: The immediate reward received after taking action $a_t$ in state $s_t$.
+    \item $\gamma$: The discount factor, controlling the weight of future rewards.
+    \item $Q(s_{t+1}, a')$: The estimated value of the next state $s_{t+1}$ under action $a'$, over which we take the maximum (greedy choice) to estimate the best possible future return.
+    \item TD target: represents a better-informed estimate of the return assuming the agent acts optimally from $s_{t+1}$ onward.
+
+\end{itemize}
+
+A high absolute TD error ($|\delta_t|$) indicates that the agent's current estimate is significantly inaccurate : highlighting a weakness in its value function and suggesting that this region of the state-action space reflects \textit{poor learning progress}.
+
+
+
+Our first hypothesis was that smoothing this error signal over time using an \ac{EMA} would provide a stable measure of an agent's overall learning quality, filtering out noisy, single-step errors. The \ac{EMA} is updated recursively, giving more weight to recent errors while still retaining information from the past. The formula is:
+\begin{equation}
+    \text{EMA}_t = \alpha \cdot |\delta_t| + (1 - \alpha) \cdot \text{EMA}_{t-1}
+    \label{eq:ema}
+\end{equation}
+where $\alpha$ is the decay rate, determining the balance between new and historical errors.
+
+\paragraph{Implementation}
+The implementation is tightly coupled with the overall training loop. Our framework follows a periodic fine-tuning schedule: the QMIX agent policies are trained for multiple times, and during this time, all TD-errors generated are continuously collected and stored in a large buffer, paired with their respective agent IDs. When it is time to fine-tune the MAE module, a mini-batch of these historical errors is sampled from the buffer. For each agent, the mean of its TD-errors within that batch is calculated. This local mean is then used to update the agent's global EMA score. Finally, a softmax function is applied to the EMA scores of all agents to create a probability distribution from which agents are sampled for masking.
+
+\paragraph{Investigating the Role of Historical Data}
+A critical parameter in an \ac{EMA} is the decay rate, $\alpha$, which controls the balance between historical data and recent updates. To understand this trade-off, our QMIX + LI-MA2E model was tested with two distinct values for $\alpha$:
+\begin{itemize}
+\item \textbf{$\alpha=0.1$:} This gives low weight to recent errors and high weight to the existing average. The resulting score is very stable and slow to change, reflecting an agent's long-term historical performance.
+\item \textbf{$\alpha=0.9$:} This gives high weight to recent errors, making the score much more reactive and sensitive to an agent's current struggles.
+\end{itemize}
+
+\paragraph{Results and Limitations}
+
+% The performance of these two EMA strategies was compared against the baseline \ac{QMIX} + \ac{MA2E}  (which uses random masking) on the \texttt{3s_vs_5z} scenario. The results, shown in Figure 5.X, indicate that while both EMA-based methods outperform the random baseline, the more reactive EMA($\alpha=0.9$) consistently achieves a higher win rate. This suggests that focusing on more recent performance data is more beneficial than relying on a long-term historical average.
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.8\textwidth]{images_pfe/results_li-ma2e/test_battle_won_mean_3s_vs_5z_ema_0.9_smoothed.png}
+%     \caption{Performance comparison of the EMA-based masking strategy ($\alpha=0.9$) against the baseline Random Masking on the \textit{3s\_vs\_5z} SMAC map. The plot shows the mean test win rate over environment timesteps. Our LI-MA2E framework with EMA scoring demonstrates significantly improved sample efficiency.}
+%     \label{fig:ema-0.9_vs_random}
+% \end{figure}
+\begin{figure}[H]
+\centering
+\subfloat[\label{fig:ema_0.9} EMA with ($\alpha=0.9$)]{\includegraphics[width=0.5\textwidth]{images_pfe/results_li-ma2e/test_battle_won_mean_3s_vs_5z_ema_0.9_smoothed.png}}%
+\hfill%
+\subfloat[\label{fig:ema_0.1} EMA with ($\alpha=0.1$)]{\includegraphics[width=0.5\textwidth]{images_pfe/results_li-ma2e/test_battle_won_mean_3s_vs_5z_ema_0.1_smoothed.png}}%
+\caption{Performance comparison of EMA-based masking strategies with different decay rates $\alpha$ against the baseline Random Masking on the \texttt{3s\_vs\_5z} SMAC map. The plots show the mean test win rate over environment timesteps.}
+\label{fig:ema_comparison}
+\end{figure}
+The performance of the EMA strategy with a decay rate of $\alpha=0.9$ was compared against the baseline Random Masking, with the results for the \texttt{3s\_vs\_5z} scenario presented in Figure~\ref{fig:ema_comparison}.
+The results clearly demonstrate that our EMA-based masking (green line) achieves significantly better sample efficiency than the baseline (blue line). The LI-MA2E framework learns the task much faster, reaching a high win rate at approximately 0.6 million timesteps, while the baseline requires around 0.8 million timesteps to achieve similar performance. While both methods eventually converge to a near-perfect win rate on this map, the accelerated learning curve of the EMA method confirms our hypothesis that intelligently guiding the masking process is more effective than a random strategy.
+
+Despite this improved efficiency, the limitation of this global EMA approach is its inherent inertia. An agent that has recently improved its policy might still be masked due to its poor history, potentially slowing down optimal convergence. This observation motivated the development of our next method, which analyzes performance dynamics on a more granular, intra-episode level.
+
+% However, the fundamental limitation of this global EMA approach is its inherent inertia. An agent that has only recently corrected its policy may continue to be masked due to its poor past performance, slowing down the reinforcement of its new, effective strategy. This observation motivated the development of our next method, which analyzes performance dynamics within a single episode rather than across them.
+\subsection{Method 2: Variance-Directional-Drop Score (VDS\_norm)}
+\label{subsec:vds_method}
+
+Our second approach analyzes the dynamics of an agent's TD-error within a single episode. The Variance-Directional-Drop Score (VDS) was designed to identify which agents are \textit{learning}, which are \textit{forgetting}, and how turbulent their learning process is. The hypothesis is that the best candidates for masking are agents whose performance is not only getting worse but is also highly unstable.
+
+\paragraph{Implementation Details}
+The VDS score is a product of two factors: a Variance Factor that measures turbulence and a Directional-Drop Factor that measures the learning trend. The formula is defined as:
+\begin{equation}
+    \text{VDS\_norm} = \left(\frac{\sigma^2}{\sigma^2 + 1}\right) \times \left(\frac{e_0 - e_T}{|e_0| + \epsilon}\right)
+\label{eq:vds}
+\end{equation}
+
+\begin{itemize}
+\item \textbf{$\left(\frac{\sigma^2}{\sigma^2 + 1}\right)$ : } This term quantifies the \textit{turbulence} or volatility of an agent's TD-error curve throughout the episode. A value close to 1 signifies a \textit{bumpy} learning process with significant oscillations and spikes, while a value close to 0 indicates a smooth and calm learning curve. This factor rewards episodes that are eventful.
+\item \textbf{$\left(\frac{e_0 - e_T}{|e_0| + \epsilon}\right)$} This term determines the overall trend of the error from the start of the episode . A positive result signifies that the agent is \textit{learning}, as its prediction error has dropped. Conversely, a negative result signifies that the agent is \textit{forgetting,} as its error has increased over the course of the episode.
+\end{itemize}
+
+By multiplying these factors, the sign of the resulting VDS\_norm score indicates whether an agent is a learner (+) or a forgetter (−), while the magnitude reflects the drama of the change. Our masking strategy prioritizes agents identified as \textit{chaotic forgetters}: those who exhibit both high variance and a negative directional drop. These agents yield a large negative VDS\_norm score and are masked first, forcing the MAE to focus its representational power on the most unstable and deteriorating policies.
+
+\paragraph{Results and Limitations}
+% As shown in Figure 5.Y, VDS provided a significant improvement over the EMA methods, confirming that intra-episode dynamics are a rich source of information for the masking process.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{images_pfe/results_li-ma2e/test_battle_won_mean_3s_vs_5z_vds_smoothed.png}
+    \caption{Performance comparison of the VDS masking strategy against the baseline Random Masking on the \texttt{3s\_vs\_5z} SMAC map. The plot shows the mean test win rate over environment timesteps.}
+    \label{fig:vds_vs_random}
+\end{figure}
+
+The performance of the VDS masking strategy was compared against the baseline Random Masking, with the results for the \texttt{3s\_vs\_5z} scenario presented in Figure~\ref{fig:vds_vs_random}.
+
+Contrary to our initial hypothesis, the results show that the VDS masking strategy (green line) significantly underperforms compared to the baseline Random Masking (blue line). Throughout the training process, the win rate for the VDS-guided agent remains considerably lower than that of the agent using a random strategy. By the end of the depicted training run at approximately 450,000 timesteps, the baseline achieves a win rate of nearly 70\%, while the VDS method struggles to surpass 30\%.
+
+Given the clear negative performance trend and the computational time required, the experiment for the VDS method was halted early as it was evident that further training was unlikely to yield a competitive result.
+
+This poor performance likely stems from the core limitations of the VDS metric. By relying on the start and end points of an entire episode, VDS may generate a noisy or misleading signal. For instance, an episode with high variance in the TD-error could result in a high-magnitude VDS score, causing a potentially effective agent to be masked frequently. As discussed, the directional-drop component also fails to distinguish between an agent that is truly \textit{forgetting } and one that is simply encountering a difficult, new part of the state space. The combination of these factors appears to create a disruptive, rather than helpful, curriculum for the MAE module, ultimately hindering the overall learning process. This result underscores the difficulty of designing a robust masking heuristic and strongly motivated the development of a more reliable score, REDS, which focuses on recent-step dynamics.
+A key limitation of \texttt{VDS\_norm} lies in its interpretation of an increasing TD-error trend as definitive \textit{forgetting}. While an agent's error increasing over an episode can be a signal of forgetting, this is not always the case. The rising TD-error could mean one of two distinct things:
+
+\begin{enumerate}
+    \item \textbf{Forgetting or Poor Generalization:} If an agent has seen the early parts of an episode's trajectory more often during training, it will predict those values well, leading to a low TD-error. If the error then rises in the later, less-frequently seen states, it suggests the agent may have \textit{forgotten} how to behave there or has failed to generalize its knowledge from the familiar states. This is a plausible sign of forgetting.
+    
+    \item \textbf{Encountering Under-Trained States:} If the later states in the trajectory are simply underrepresented in the replay buffer, a high TD-error is not a sign of forgetting, but rather an indication that the agent is still actively learning about this unfamiliar part of the state space.
+\end{enumerate}
+However, its reliance on the start and end points of an entire episode can sometimes be misleading. For example, an agent might improve significantly for most of the episode but then start to \textit{forget} right at the end; VDS might still classify this as overall \textit{learning} and fail to mask the agent when it needs it most. This limitation motivated the development of a score that focuses specifically on the most recent timesteps.
+
+
+\subsection{Method 3: Recent Error and Forgetting Detection (REDS)}
+\label{subsec:reds_method}
+
+To overcome the full-episode focus of VDS and its inability to capture short-term dynamics, we developed REDS. This score is designed to identify agents that are problematic \textit{right now} by analyzing only the most recent timesteps of their experience. The hypothesis is that a more accurate and timely signal can be derived by considering two factors from an agent's recent history: its current average error level and any immediate evidence of \textit{forgetting} (a rising error trend).
+% \subsubsection*{REDS Score Implementation}
+
+% The \texttt{REDS} score (Residual Error-Driven Score) is computed per-agent using only the most recent batch of TD-errors (timestep-based, not episode-based). It focuses on the last 25\% of each trajectory ($k = \lfloor \text{trajectory\_length} / 4 \rfloor$) to capture recent performance trends. The score combines:
+% \begin{itemize}
+%     \item \textbf{Mean TD-error:} The magnitude of recent errors.
+%     \item \textbf{Slope of TD-errors:} The directional trend, which penalizes worsening performance.
+% \end{itemize}
+
+% \paragraph{Formula}
+% \[
+% \text{REDS} = 0.6 \cdot \overline{|\text{TD}|}_k + 0.4 \cdot \text{ReLU}(\text{slope}_k)
+% \]
+
+% \paragraph{Key Properties}
+% \begin{itemize}
+%     \item \textbf{Timestep-local:} Uses only the latest batch of experience and does not require a historical buffer.
+%     \item \textbf{Adaptive:} Higher scores target agents that exhibit either large or worsening errors, focusing representational learning where it is most needed.
+% \end{itemize}
+
+% \paragraph{Computation}
+% \begin{lstlisting}[language=Python, caption={PyTorch-style computation of the REDS score.}, label={lst:reds_code}]
+% # Input: td_errors [B, T, A] (batch, timesteps, agents)
+
+% # Focus on the last 25% of the trajectory
+% k = T // 4
+% td_last_k = td_errors[:, -k:, :]
+
+% # Calculate the two components of the score
+% mean_k = td_last_k.abs().mean(dim=1)
+% slope_k = (td_last_k[:, -1, :] - td_last_k[:, 0, :]) / k
+
+% # Combine the components to get the final score
+% res_score = 0.6 * mean_k + 0.4 * torch.relu(slope_k) # Shape: [B, A]
+% \end{lstlisting}
+
+% \paragraph{Usage}
+% The resulting score tensor, \texttt{res\_score}, is detached from the computation graph and passed to the MAE module. The MAE then masks the agents with the top-$k$ scores (where $k=1$ by default) during its fine-tuning phase.
+
+
+\paragraph{Implementation Details}
+
+% In contrast to the EMA method which uses a large historical buffer, the REDS score is calculated using only the TD-errors generated from the most recent training timesteps, immediately preceding the MAE fine-tuning step. This calculation focuses specifically on the last k timesteps  of that recent trajectories to get an up-to-date snapshot of agent performance. It combines the mean of these recent TD-errors with a measure of their slope. The formula is:
+% REDS is calculated for each agent using only the last $k$ steps of an episode's trajectory. It combines the mean of recent TD-errors with a measure of their slope. The formula is:
+% \begin{equation}
+%     \text{REDS} = 0.6 \cdot \text{mean}_k(|\text{TD}|) + 0.4 \cdot \text{ReLU}\left( \frac{\text{TD}_{\text{end}} - \text{TD}_{\text{mid}}}{k} \right)
+%     \label{eq:reds}
+% \end{equation}
+% The first term, $\text{mean}_k(|\text{TD}|)$, captures the agent's current average error level over the last $k$ steps. The second term, $\text{ReLU}(\text{slope})$, calculates the slope of the TD-error over the recent window. 
+% % By using the Rectified Linear Unit (ReLU), we only penalize a positive slope, which signifies that the agent's error is actively increasing: a direct indicator of forgetting.
+% In each fine-tuning step, the $k_1$ agents with the highest \texttt{REDS} scores are selected and masked.
+
+The \texttt{REDS} score is computed per-agent using only the most recent batch of TD-errors, focusing on the last 25\% of each trajectory ($k = \lfloor \text{trajectory\_length} / 4 \rfloor$) to capture recent performance trends. It combines the mean TD-error (magnitude of recent errors) and the slope of TD-errors (directional trend, penalizing worsening performance).
+The score is calculated as:
+\begin{equation}
+    \text{REDS} = 0.6 \cdot \overline{|\text{TD}|}_k + 0.4 \cdot \text{ReLU}(\text{slope}_k)
+    \label{eq:reds}
+\end{equation}
+
+where $\overline{|\text{TD}|}_k$ is the mean of absolute TD-errors over the last $k$ steps, and $\text{slope}_k$ is the trend over that same window.
+
+\paragraph{Key Properties}
+\begin{itemize}
+    \item \textbf{Timestep-Local:} Uses only the latest batch of experience, requiring no historical data buffer.
+    \item \textbf{Adaptive:} The score naturally targets agents with either large-magnitude errors or a worsening error trend, focusing learning where it is most needed.
+\end{itemize}
+
+% \paragraph{Implementation}
+% During implementation, the last $k$ timesteps are extracted from the main TD-error tensor (shape $[B, T, A]$). The \texttt{mean\_k} and \texttt{slope\_k} components are calculated, resulting in a final \texttt{res\_score} tensor of shape $[B, A]$. This score is then detached from the computation graph (\texttt{agent\_scores = res\_score.detach()}) and passed to the MAE, which masks the agents with the top scores ($k=1$ by default) during its fine-tuning phase.
+
+This approach ensures that fine-tuning prioritizes agents with immediate, high-impact errors while remaining computationally lightweight. The weights (0.6, 0.4) and the window size $k$ are tunable hyperparameters that balance the sensitivity between error magnitude and trend severity.
+
+
+
+\textbf{The purpose of the ReLU function in the REDS Formula: }
+The purpose of the ReLU function is to isolate and penalize only the agents that are actively \textit{forgetting}, without penalizing agents that are actively learning.
+
+Here's the breakdown of the logic:
+\begin{itemize}
+    \item The $\text{slope}_k$ term, $(\text{TD}_{\text{end}} – \text{TD}_{\text{mid}}) / k$, calculates the recent trend of the TD-error.
+    \item A positive slope indicates that the error is increasing, which is our signal for \textit{forgetting}.
+    \item A negative slope indicates that the error is decreasing, which is a sign of successful learning.
+\end{itemize}
+By applying $\text{ReLU}(\text{slope}_k)$, we transform the slope value:
+\begin{itemize}
+    \item If the slope is positive (forgetting), ReLU passes the value through, adding a penalty to the \texttt{REDS} score.
+    \item If the slope is negative (learning), ReLU outputs zero. This is crucial because it ensures that agents who are learning effectively are not \textit{penalized twice} for having a steep (but beneficial) drop in their error.
+\end{itemize}
+The ReLU acts as a filter, allowing the formula to focus exclusively on the undesirable behavior of an upward drift in error, making the \textit{Forget-Penalty} term more precise.
+\paragraph{Results and Limitations}
+\begin{figure}[H]
+    \centering
+   
+        
+    \includegraphics[width= 0.9\linewidth]{images_pfe/results_li-ma2e/test_battle_won_mean_3s_vs_5z_res_smoothed_full.png}
+ 
+  
+    \caption{Performance comparison of the REDS masking strategy against the baseline Random Masking on the \texttt{3s\_vs\_5z} SMAC map.The plot shows the mean test win rate over environment timesteps.
+    }
+    \label{fig:reds_vs_random}
+\end{figure}
+
+The performance of the REDS masking strategy was compared  against the baseline Random Masking on the \texttt{3s\_vs\_5z} scenario, with the results presented in Figure~\ref{fig:reds_vs_random}.
+
+The results clearly demonstrate that the REDS strategy (green line) provides a significant improvement in sample efficiency over the baseline (blue line). The REDS method begins learning notably earlier and maintains a consistent performance lead throughout the critical training phase between approximately 0.2 million and 0.8 million timesteps.
+
+While the Random Masking baseline eventually catches up and both methods are capable of solving this map by reaching a near-perfect win rate, the accelerated learning curve of REDS is substantial. This confirms that a focused masking strategy based on recent learning dynamics is highly effective at speeding up the training process compared to an uninformed, random approach.
+% The results in Figure 5.Z show that REDS provides a significant performance boost over both the EMA and VDS methods. This confirms our hypothesis that focusing on recent, fine-grained learning dynamics provides a more effective signal for the masking process than either global or full-episode averages.
+\texttt{REDS} introduces its own set of challenges and limitations:
+\begin{itemize}
+    \item \textbf{Computational Overhead:} Compared to the simpler EMA or VDS scores, calculating \texttt{REDS} for every agent at every episode is more computationally intensive, as it requires storing and processing a sliding window of recent TD-errors.
+    
+    \item \textbf{Hyperparameter Sensitivity:} The performance of \texttt{REDS} is dependent on the careful tuning of its key hyperparameters.
+    \begin{itemize}
+        \item \textit{Window Size ($k$):} The choice of the look-back window is a trade-off. A shorter window reacts faster but can be noisy, while a longer window is smoother but slower to adapt. The optimal value can be scenario-dependent.
+        
+        \item \textit{Component Weights (0.6 / 0.4):} The weights assigned to the mean-error versus the forgetting-penalty must be balanced. Over-emphasizing one component can cause the score to miss the nuances of the other, requiring careful adjustment to achieve the best results.
+    \end{itemize}
+\end{itemize}
+However, REDS still operates on the TD-error in isolation. It treats all errors equally, regardless of the context provided by an agent's observation. For example, a high TD-error from an agent seeing very little might be less informative for the MAE to reconstruct than a high TD-error from an agent observing a complex battlefield interaction. This realization prompted our final investigation into a method that contextualizes the error signal with the agent's observation.
+\subsection{Method 4: Observation-Weighted TD-Error}
+
+Our final investigation attempted to contextualize an agent's learning error with the \textit{richness} of its observation. The previous methods, including REDS, treat the TD-error signal in isolation. However, a high TD-error from an agent seeing very little might be less informative for the MAE to reconstruct than a high TD-error from an agent observing a complex battlefield interaction.
+The hypothesis for this method is that an agent's failure is most significant if it is failing despite receiving a large amount of information. To quantify the amount of information an agent is \textit{seeing,} we use the L2 norm of its observation vector.
+
+\paragraph{Implementation Details}
+The masking score is calculated as a direct product of the agent's performance error and its observation magnitude:
+\begin{equation}
+    \text{Masking Score} = |\text{TD-error}| \times \| \text{Observation} \|_2
+    \label{eq:obs_weighted_td}
+\end{equation}
+The intuition behind this score can be broken down into four cases:
+\begin{itemize}
+    \item \textbf{High TD-error \& High L2-norm:} The agent receives a lot of information but still fails to predict correctly. It is likely \textit{confused} or \textit{overwhelmed} and is a prime candidate for masking.
+    \item \textbf{High TD-error \& Low L2-norm:} The agent sees very little and is still performing poorly. Its observation is uninformative, making it another good candidate for masking.
+    \item \textbf{Low TD-error \& High L2-norm:} The agent sees a lot and learns well. This is a strong, stable agent that should be kept as an anchor for the MAE's reconstruction.
+    \item \textbf{Low TD-error \& Low L2-norm:} The agent is stable but has a limited view. This agent is likely harmless and can be kept.
+\end{itemize}
+
+\paragraph{Results and Limitations}
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{images_pfe/results_li-ma2e/test_battle_won_mean_3s_vs_5z_Observation-Weighted_TD_smoothed.png}
+    \caption{Performance comparison of the Observation-Weighted TD-Error masking strategy against the baseline Random Masking on the \texttt{3s\_vs\_5z} SMAC map. The plot shows the mean test win rate over environment timesteps.}
+    \label{fig:obs_weighted_vs_random}
+\end{figure}
+
+The performance of the Observation-Weighted TD-Error strategy was compared against the Random Masking baseline on the \texttt{3s\_vs\_5z} map, with results shown in Figure~\ref{fig:obs_weighted_vs_random}.
+
+The results present a nuanced picture. Unlike some previously tested methods, this strategy does not show a significant improvement in sample efficiency during the initial learning phase. The performance of the observation-weighted method (green line) closely tracks that of the random baseline (blue line) for the first approximately 450,000 timesteps.
+
+However, in the later stages of training, a clear advantage emerges. The Observation-Weighted TD-Error strategy begins to outperform the baseline, converging to a high win rate more quickly and smoothly. This delayed improvement supports our analysis of the method's limitations; the L2 norm of the observation is not always a reliable or stable proxy for the usefulness of the information an agent receives. The initial phase, where it performs similarly to random masking, suggests that this heuristic may introduce noise that counteracts the benefit of the TD-error signal early in training. Only once the underlying value functions become more stable does the contextual information from the observation norm appear to provide a consistent, beneficial signal.
+% This method provided competitive performance in some scenarios, as shown in Figure~\ref{fig:obs_weighted_results}, but proved to be less stable and robust than REDS overall.
+% The primary limitation is that the L2 norm is not always a reliable proxy for the usefulness or complexity of an observation. For example, an agent observing a single, high-health enemy up close might have a higher observation norm than an agent observing multiple, low-health enemies at a distance. 
+% However, the latter situation is arguably more complex and tactically important. Because the L2 norm can fluctuate wildly based on factors not directly related to decision-making complexity, this heuristic-based score was ultimately less reliable than a score based purely on the learning dynamics captured by REDS.
+\subsection{Method 5: Adaptive Masking with Mean TD-Error Thresholding}
+
+After investigating complex heuristics like VDS and observation-weighting, our final approach returns to the most direct signal of agent performance: the TD-error itself. The previous methods, while insightful, introduced additional complexity and sensitive hyperparameters. The hypothesis for this final method is that a simple, direct, and adaptive threshold is more robust and effective.
+
+Instead of trying to interpret the dynamics of the error (like VDS or REDS), we simply posit that agents performing worse than the current batch average are the most beneficial candidates for masking. This approach is designed to be adaptive throughout training. Early on, when agent performance varies widely, the mean TD-error provides a natural and dynamic cutoff. Late in training, when all agents perform well and have similar, low TD-errors, a fixed threshold would fail. Therefore, a top-$k_1$ fallback mechanism is included to ensure that the MAE continues to be fine-tuned on the relatively weaker agents, even when all agents are strong.
+
+\paragraph{Implementation Details}
+It is important to note that this smart masking strategy is only applied during the policy fine-tuning phase. The initial pre-training of the MA$^2$E module is still conducted using random masking to allow the model to learn general, unbiased agent representations.
+
+The fine-tuning process for this method uses only the TD-errors generated from the most recent training batch, ensuring minimal overhead. The step-by-step process is as follows:
+\begin{enumerate}
+    \item \textbf{Compute TD-Error per Agent:} For each agent $a$, the TD-error is calculated as the difference between its predicted Q-value and the target value:
+    \begin{equation}
+        \label{eq:td_error_simple}
+        \text{TD-error}_a = Q_a - \text{Target}_a
+    \end{equation}
+
+    \item \textbf{Agent Selection with Adaptive Threshold:} The core of the method lies in its two-stage selection logic:
+    \begin{itemize}
+        \item First, the mean of the absolute TD-errors is computed across all agents in the current training batch.
+        \item Any agent whose individual TD-error is above this batch mean is selected for masking.
+        \item As a fallback, if no agent's error exceeds the mean (a situation common late in training), the top-$k$ agents with the highest TD-errors are chosen instead.
+    \end{itemize}
+
+    \item \textbf{Apply Masking:} The observation-action history tokens of all selected agents are masked (e.g., zeroed out) before being passed as input to the MAE module for reconstruction.
+\end{enumerate}
+\paragraph{Results and Limitations}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{images_pfe/results_li-ma2e/test_battle_won_mean_3s_vs_5z_Mean_TD-Error_Thresholding _smoothed.png}
+    \caption{Performance of the final Adaptive Mean TD-Error Thresholding strategy compared against the Random Masking baseline on the \texttt{3s\_vs\_5z} SMAC map. The plot highlights the superior sample efficiency of the proposed method.}
+    \label{fig:mean_td_vs_random}
+\end{figure}
+
+
+Finally, the performance of our proposed Adaptive Masking with Mean TD-Error Thresholding was compared against the baseline Random Masking. The results on the \texttt{3s\_vs\_5z} map are presented in Figure~\ref{fig:mean_td_vs_random}.
+
+The results demonstrate a dramatic improvement in performance and sample efficiency. The Mean TD-Error Thresholding strategy (green line) learns significantly faster than the baseline (blue line), achieving a near-perfect win rate before 0.6 million timesteps, while the baseline requires over 1.2 million timesteps to reach a similar level of performance.
+
+This final experiment provides a clear conclusion to our investigation of scoring methods. After exploring a global historical average (EMA), episode-level dynamics (VDS), and feature-based heuristics (Observation-Weighted TD-error), the results show that a simple, direct, and adaptive threshold based on the batch-average TD-error is the most robust and effective strategy. It avoids the inertia of the EMA, the ambiguity of VDS, and the heuristic instability of the observation-weighted score. Its superior performance validates our final hypothesis that a straightforward comparison of an agent's immediate error to that of its peers provides the cleanest and most potent signal for guiding the MAE's representational learning.
+
+Therefore, based on this comprehensive empirical analysis, the Adaptive Masking with \textbf{Mean TD-Error Thresholding} was selected as the definitive LI-MA2E framework. All subsequent results presented in this thesis will utilize this final, optimized method.
+% This new subsection will contain the summary plot and its analysis.
+\subsection{Comparison of Masking Strategies:}
+
+To synthesize the findings from our investigation and provide a clear visual summary,Figure~\ref{fig:all_strategies_comparison} presents a direct comparison of all tested masking strategies on the  \texttt{3s\_vs\_5z} scenario.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1.0\textwidth]{images_pfe/results_li-ma2e/comparison_random_ema_res_vds.pdf} 
+    \caption{Comprehensive comparison of all evaluated masking strategies on the \texttt{3s\_vs\_5z}  SMAC map. The results visually confirm that the Mean TD-Error Thresholding and REDS strategies provide the best sample efficiency.}
+    \label{fig:all_strategies_comparison}
+\end{figure}
+
+The results in Figure~\ref{fig:all_strategies_comparison} provide a clear hierarchy of performance. The \textbf{VDS} strategy significantly hindered learning compared to the random baseline. The \textbf{EMA-based methods} and the \textbf{Observation-Weighted TD-Error} offer marginal improvements over random masking, with the more reactive \textbf{EMA($\alpha=0.9$)} showing the most promise among them.
+
+However, the two most effective strategies are clearly \textbf{REDS} and our final proposed method, \textbf{Mean TD-Error Thresholding}. Both demonstrate vastly superior sample efficiency, reaching high win rates much earlier than any other approach. This comprehensive result validates our research trajectory, confirming that moving from global averages or flawed episode-level heuristics to reactive, fine-grained signals based on recent TD-error dynamics yields the best performance. While both REDS and Mean TD-Error Thresholding are highly effective, the latter was chosen as our final framework due to its simpler implementation and more direct, adaptive logic.
+\section{Main Results: Comparative Performance of LI-MA2E}
+\label{sec:main_results}
+
+Having established the superiority of our Adaptive Mean TD-Error Thresholding strategy in the previous section, we now present a comprehensive performance evaluation of the final LI-MA2E framework. To validate its effectiveness and generalization capabilities, we benchmark our method against the baseline MA2E with random masking across a suite of challenging HARD and SuperHARD scenarios from both the SMAC environment. This section will demonstrate the consistent performance gains achieved by our intelligent masking approach.
+\subsection{Performance on SMAC Scenarios}
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.8\textwidth]{images_pfe/results_li-ma2e/comparison_plot_3m.png}
+%     \caption{Performance comparison on the \texttt{3m} SMAC map. On simpler maps, the performance of LI-MA2E is comparable to the random masking baseline, with both methods quickly solving the task.}
+%     \label{fig:3m}
+% \end{figure}
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.8\textwidth]{images_pfe/results_li-ma2e/comparison_plot_3s_vs_3z.png}
+%     \caption{Performance comparison on the \texttt{3s\_vs\_3z} SMAC map. LI-MA2E demonstrates significantly improved sample efficiency over the baseline.}
+%     \label{fig:3s_vs_3z}
+% \end{figure}
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.8\textwidth]{images_pfe/results_li-ma2e/test_battle_won_mean_3s_vs_5z_Mean_TD-Error_Thresholding _smoothed.png}
+%     \caption{Performance comparison on the \texttt{3s\_vs\_5z} SMAC map. The plot highlights the accelerated learning and greater final policy stability of LI-MA2E in a more complex scenario.}
+%     \label{fig:3s_vs_5z}
+% \end{figure}
+
+\subsubsection{Scenario: \texttt{3m}}
+Our first evaluation is on the \texttt{3m} scenario, a simple symmetric map that pits \textbf{3 allied Marines against 3 enemy Marines}. Because  \textbf{the agents are homogeneous} and the \textbf{setup is symmetric}, the primary challenge in this map is learning a fundamental cooperative tactic: \textbf{focus-firing}. To win consistently, all three agents must learn to coordinate their attacks on the same enemy target at the same time to eliminate it quickly, rather than spreading their damage ineffectually across multiple targets. This scenario serves as a basic test of coordination. The results are presented in Figure~\ref{fig:3m}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{images_pfe/results_li-ma2e/comparison_plot_3m.png}
+    \caption{Performance comparison on the \texttt{3m} SMAC map. On this simple symmetric scenario, the performance of LI-MA2E is comparable to the random masking baseline.}
+    \label{fig:3m}
+\end{figure}
+
+\paragraph{Analysis}
+As the learning curves in Figure~\ref{fig:3m} show, the performance of our LI-MA2E framework (green line) is largely comparable to that of the baseline MA2E with random masking (blue line). Both methods learn the task very rapidly, achieving a near-perfect win rate in under 250,000 environment timesteps. Throughout the remainder of the training, both policies maintain a similar high level of performance.
+
+This result suggests that on simpler scenarios where the need for complex coordination to overcome partial observability is low, the additional guidance provided by our intelligent masking strategy does not yield a significant advantage. The baseline random masking is sufficient for the MAE module to learn the necessary representations to solve this task effectively. This provides an important baseline, demonstrating that our method's complexity does not hinder performance on easy tasks while setting the stage for evaluation on more demanding scenarios.
+
+\subsubsection{Scenario: \texttt{3s\_vs\_3z}}
+Next, we look at the \texttt{3s\_vs\_3z} scenario. In this test, our \textbf{3 agents control Stalker units}, which can attack from a distance. They face \textbf{3 enemy Zealot units}, which are severe but can only attack up close.
+
+Because our agents can shoot from far away, the most important skill they must learn is called \textbf{kiting}. Kiting means the Stalkers must keep moving away from the chasing Zealots, while stopping briefly to shoot at them. The goal is to damage the enemy without letting them get close enough to hit back. To do this well, all three of our agents need to work together as a team. The results of this test are shown in Figure~\ref{fig:3s_vs_3z}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{images_pfe/results_li-ma2e/comparison_plot_3s_vs_3z.png}
+    \caption{Performance comparison on the \texttt{3s\_vs\_3z} SMAC map. LI-MA2E demonstrates significantly improved sample efficiency over the baseline.}
+    \label{fig:3s_vs_3z}
+\end{figure}
+
+\paragraph{Analysis}
+In the \texttt{3s\_vs\_3z} scenario, the benefit of our LI-MA2E framework becomes immediately apparent. As shown in Figure~\ref{fig:3s_vs_3z}, the agent guided by TD-Error Masking (green line) learns significantly faster than the baseline agent using Random Masking (blue line).
+
+Our method begins to achieve a non-zero win rate earlier and its learning curve is considerably steeper, indicating superior sample efficiency. The LI-MA2E agent reaches a perfect win rate at approximately 400,000 timesteps, while the baseline requires around 600,000 timesteps to achieve the same level of performance. This result supports our hypothesis that as scenario complexity increases, an intelligent masking strategy that focuses the MAE's representational power on poorly performing agents provides a distinct advantage, enabling the system to solve the coordination task more rapidly.
+\subsubsection{Scenario: \texttt{3s\_vs\_4z}}
+
+Now, we test a harder scenario called \texttt{3s\_vs\_4z}. Here, our \textbf{3 Stalker agents}, who can shoot from a distance, must fight against \textbf{4 enemy Zealot units}, which are durable but can only attack up close.
+
+This test is much more difficult because our agents are \textbf{outnumbered}. To win, they must use two skills together perfectly:
+\begin{enumerate}
+    \item \textbf{Kiting:} They must keep running away from the Zealots to stay safe, while stopping to shoot them.
+    \item \textbf{Focus-Firing:} All three Stalkers must attack the \textit{same} Zealot at the same time to defeat it as quickly as possible.
+\end{enumerate}
+This requires excellent teamwork to succeed. The results of this difficult test are shown in Figure~\ref{fig:3s_vs_4z}.
+
+\begin{figure}[H]
+    \centering
+     \includegraphics[width=0.8\textwidth]{images_pfe/results_li-ma2e/comparison_plot_3s_vs_4z.png}
+    \caption{Performance comparison on the \texttt{3s\_vs\_4z} SMAC map. The plot shows a trade-off between the faster initial learning of the baseline and the more stable final convergence of LI-MA2E.}
+    \label{fig:3s_vs_4z}
+\end{figure}
+
+\paragraph{Analysis}
+The \texttt{3s\_vs\_4z} scenario reveals an interesting trade-off between learning speed and final policy stability. As shown in Figure~\ref{fig:3s_vs_4z}, the baseline MA2E with Random Masking (blue line) exhibits a faster initial learning curve, reaching a high win rate more quickly.
+
+However, a closer look at the convergence phase (after 0.6 million timesteps) shows that our LI-MA2E framework (green line) achieves a more stable and decisive convergence at a 100\% win rate. The baseline's performance, in contrast, shows more fluctuation before finally settling. This suggests that while the exploratory nature of random masking may find a working solution faster in this specific scenario, the guided approach of LI-MA2E produces a more robust and stable final policy.
+% \subsubsection{Scenario: \texttt{3s\_vs\_4z}}
+% We next examine the performance on \texttt{3s\_vs\_4z}, an asymmetric scenario where three Stalker agents face four Zealots, increasing the demand for effective kiting and coordination. The results of this experiment are presented in Figure~\ref{fig:3s_vs_4z}.
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.8\textwidth]{images_pfe/results_li-ma2e/comparison_plot_3s_vs_4z.png}
+%     \caption{Performance comparison on the \texttt{3s\_vs\_4z} SMAC map. In this asymmetric scenario, the baseline Random Masking demonstrates faster initial learning, though both methods ultimately converge to a perfect win rate.}
+%     \label{fig:3s_vs_4z}
+% \end{figure}
+
+% \paragraph{Analysis}
+% In the \texttt{3s\_vs\_4z} scenario, we observe an interesting and unexpected result. As shown in Figure~\ref{fig:3s_vs_4z}, the baseline MA2E with Random Masking (blue line) exhibits a faster initial learning curve than our LI-MA2E framework (green line). Although both methods ultimately converge to a near-perfect win rate, the baseline agent solves the map more quickly in this specific instance.
+
+% This counter-intuitive result suggests that the effectiveness of the intelligent masking signal can be highly scenario-dependent. A possible hypothesis is that in this particular asymmetric kiting task, the TD-error signal might initially be noisy or misleading. The LI-MA2E strategy, by focusing on what it perceives as the most poorly performing agents, may be too narrowly focused early in training. In this case, the broader, more exploratory nature of random masking may allow the MAE to learn a more effective general representation for this specific task more quickly. This result highlights a valuable finding: a highly structured learning curriculum is not universally superior to a stochastic one and its benefit can depend on the specific dynamics of the task.
+% \subsubsection{Scenario: \texttt{3s\_vs\_5z}}
+% We now turn to the \texttt{3s\_vs\_5z} scenario, a challenging asymmetric map from the HARD difficulty category that places high demands on agent coordination and kiting skills. The results are presented in Figure~\ref{fig:3s_vs_5z}.
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.8\textwidth]{images_pfe/results_li-ma2e/test_battle_won_mean_3s_vs_5z_Mean_TD-Error_Thresholding _smoothed.png}
+%     \caption{Performance comparison on the \texttt{3s\_vs\_5z} HARD scenario. In this complex asymmetric task, LI-MA2E demonstrates vastly superior sample efficiency and produces a more stable final policy compared to the baseline Random Masking.}
+%     \label{fig:3s_vs_5z}
+% \end{figure}
+
+% \paragraph{Analysis}
+% In stark contrast to the previous map, the results on \texttt{3s\_vs\_5z} show a clear and significant advantage for our LI-MA2E framework (green line). The intelligent masking strategy leads to a dramatic improvement in both sample efficiency and final policy stability.
+
+% LI-MA2E learns much faster, achieving a near-perfect win rate before 0.6 million timesteps, while the baseline with random masking (blue line) requires more than 1.2 million timesteps to reach a similar peak performance. Crucially, during the later stages of training (after 1.3 million steps), the baseline policy exhibits significant instability with a sharp drop in performance, a behavior not observed in our method.
+
+% This strong result supports our core hypothesis. The \texttt{3s\_vs\_5z} map requires precise, coordinated kiting, where a single agent's mistake can be catastrophic. By adaptively focusing the MAE's reconstruction on the agent with the highest immediate error, our framework helps the team learn this essential cooperative strategy more effectively and robustly. The final stability of the LI-MA2E policy suggests that it has discovered a more general and resilient solution compared to the brittle policy learned by the baseline.
+
+\subsubsection{Scenario: \texttt{3s\_vs\_5z}}
+
+Next, we test our method on \texttt{3s\_vs\_5z}, a very hard challenge from the \texttt{HARD} difficulty category. In this test, our \textbf{3 Stalker agents} (who shoot from a distance) are heavily outnumbered by \textbf{5 durable enemy Zealots} (who attack up close).
+
+To win this difficult fight, the agents must be perfect at two skills at the same time:
+\begin{enumerate}
+    \item \textbf{Kiting:} They must always keep running away from the Zealots to avoid taking damage, while still turning to shoot.
+    \item \textbf{Focus-Firing:} All three of our agents must attack the exact same enemy at the same time. This is the only way to defeat one of the five enemies quickly.
+\end{enumerate}
+This is a major test of teamwork. If even one agent makes a mistake, the team will likely lose. The agents must learn to coordinate perfectly to survive and win. The results for this difficult test are shown in Figure~\ref{fig:3s_vs_5z}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{images_pfe/results_li-ma2e/test_battle_won_mean_3s_vs_5z_Mean_TD-Error_Thresholding _smoothed.png}
+    \caption{Performance comparison on the \texttt{3s\_vs\_5z} HARD scenario. In this complex asymmetric task, LI-MA2E demonstrates vastly superior sample efficiency and produces a more stable final policy compared to the baseline Random Masking.}
+    \label{fig:3s_vs_5z}
+\end{figure}
+
+\paragraph{Analysis}
+In stark contrast to the previous map, the results on \texttt{3s\_vs\_5z} show a clear and significant advantage for our LI-MA2E framework (green line). The intelligent masking strategy leads to a dramatic improvement in both sample efficiency and final policy stability.
+
+LI-MA2E learns much faster, achieving a near-perfect win rate before 0.6 million timesteps, while the baseline with random masking (blue line) requires more than 1.2 million timesteps to reach a similar peak performance. Crucially, during the later stages of training (after 1.3 million steps), the baseline policy exhibits significant instability with a sharp drop in performance, a behavior not observed in our method.
+
+This strong result supports our core hypothesis. The \texttt{3s\_vs\_5z} map requires precise, coordinated kiting, where a single agent's mistake can be catastrophic. By adaptively focusing the MAE's reconstruction on the agent with the highest immediate error, our framework helps the team learn this essential cooperative strategy more effectively and robustly. The final stability of the LI-MA2E policy suggests that it has discovered a more general and resilient solution compared to the brittle policy learned by the baseline.
+% \subsubsection{Scenario: \texttt{8m}}
+% We continue our evaluation with the \texttt{8m} scenario, a symmetric map which pits \textbf{8 allied Marines against 8 enemy Marines}. This task increases the number of homogeneous agents compared to \texttt{3m} and demands effective \textbf{focus-firing} to succeed. Focus-firing is a critical coordination strategy where multiple agents target and eliminate a single enemy unit at a time. This tactic maximizes the applied damage and removes sources of enemy fire from the battlefield as quickly as possible, representing a significant coordination challenge for a multi-agent system. The results are presented in Figure~\ref{fig:8m}.
+
+
+% \begin{figure}[H]
+%     \centering
+%     \includegraphics[width=0.8\textwidth]{images_pfe/results_li-ma2e/comparison_plot_8m.png}
+%     \caption{Performance comparison on the \textit{8m} SMAC map. Both methods converge to a perfect win rate, with the baseline showing a faster initial learning rate.}
+%     \label{fig:8m}
+% \end{figure}
+
+% \paragraph{Analysis}
+% In the \texttt{8m} scenario, we observe a nuanced result. As shown in Figure~\ref{fig:8m}, both our LI-MA2E framework (green line) and the baseline Random Masking (blue line) successfully solve the map, converging to a near-perfect and stable win rate at approximately the same time (around 0.6 million timesteps).
+
+% However, when we analyze the learning trajectory \textit{before} convergence, the baseline with Random Masking exhibits a slightly faster initial learning speed. The blue line's win rate rises more steeply between 0.2 and 0.5 million timesteps. This suggests that for this specific homogeneous scenario, the exploratory nature of random masking was sufficient to quickly find an effective policy. While our LI-MA2E method also robustly learns the optimal strategy, its more guided approach did not provide an advantage in sample efficiency in this particular case. This finding helps to define the conditions under which our method provides the most significant advantage, which appears to be in more complex and asymmetric scenarios.
+\subsubsection{Scenario: \texttt{8m}}
+We continue our evaluation with the \texttt{8m} scenario, a symmetric map which pits \textbf{8 allied Marines against 8 enemy Marines}. This task increases the number of homogeneous agents compared to \texttt{3m} and demands effective \textbf{focus-firing} to succeed. Focus-firing is a critical coordination strategy where multiple agents target and eliminate a single enemy unit at a time. This tactic maximizes the applied damage and removes sources of enemy fire from the battlefield as quickly as possible, representing a significant coordination challenge for a multi-agent system. The results are presented in Figure~\ref{fig:8m}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{images_pfe/results_li-ma2e/comparison_plot_8m.png}
+    \caption{Performance comparison on the \texttt{8m} SMAC map. Both methods converge to a perfect win rate, with the baseline showing a faster initial learning rate.}
+    \label{fig:8m}
+\end{figure}
+\paragraph{Analysis}
+Upon careful re-examination of the provided plot for the \texttt{8m} scenario, the results show a nuanced competition between the two methods. The baseline Random Masking (blue line) demonstrates a higher sample efficiency during the initial critical learning phase.
+
+As seen in Figure~\ref{fig:8m}, the blue line's win rate rises more steeply and consistently between 0.1 million and 0.3 million timesteps, reaching a high level of performance first. The LI-MA2E method (green line), while also learning the task, shows a noticeable dip in performance around 0.15 million timesteps and follows a slower learning trajectory in this initial phase. Both methods do eventually converge to a near-perfect win rate after approximately 1.0 million timesteps, showing that both can ultimately solve this scenario. However, the advantage in learning speed in this case belongs to the baseline.
+
+This finding suggests that in this specific homogeneous scenario with a larger number of agents, the broader, exploratory nature of random masking may be more effective at building a general representation than the more focused TD-error approach. This helps to define the conditions under which our LI-MA2E provides the most significant advantage—namely, in more complex, asymmetric scenarios.
+\section{Conclusion}
+\lipsum[2]
+
+
+
+

@@ -1,0 +1,97 @@
+
+
+\mychapter{0}{Abstract}
+
+Cooperative Multi-Agent Reinforcement Learning (MARL) is a powerful paradigm for solving complex coordination tasks, but its effectiveness is often limited by the challenge of partial observability, where agents must act based on incomplete local information. While methods like the Multi-Agent Masked Auto-Encoder (${MA}^2E$) attempt to address this by learning to reconstruct global information, their reliance on a  random masking strategy creates a disconnect between the representation learning and the primary reinforcement learning objective.
+
+This thesis introduces a novel framework, Learning-Informed Masking for Multi-Agent Reinforcement Learning ($LI-{MA}^2E$), which bridges this gap. Our approach introduces a \textit{Policy-Aware Scorer} that leverages real-time training signals, such as the Temporal Difference (TD) error, to intelligently and adaptively mask agents that are performing poorly. This forces the auto-encoder to focus its representational power where it is needed most, creating a more efficient and effective learning curriculum.
+
+Through a rigorous empirical evaluation on the StarCraft Multi-Agent Challenge (SMAC) benchmark, we demonstrate that this learning-informed approach is superior to random masking. Our methodical investigation shows that a simple, adaptive masking strategy based on the mean TD-error yields the best performance. The final $LI-{MA}^2E$ framework not only achieves faster task completion (win rate) but also learns higher-quality and more robust policies (mean test return), which is explained by a more stable underlying learning process. This work confirms that dynamically aligning the self-supervised reconstruction task with the RL objective is a powerful mechanism for enhancing MARL performance under partial observability.
+
+
+
+\vspace{1cm}
+
+
+
+\noindent\rule[2pt]{\textwidth}{0.5pt}
+
+{\textbf{Keywords :}}
+Multi-Agent Reinforcement Learning (MARL), Partial Observability, Masked Auto-Encoder, Representation Learning, Deep Reinforcement Learning, Coordination.
+\\
+\noindent\rule[2pt]{\textwidth}{0.5pt}
+\clearpage
+
+
+
+\mychapter{0}{Résumé}
+
+
+
+L'apprentissage par renforcement multi-agents (MARL) est un paradigme puissant pour résoudre des tâches de coordination complexes, mais son efficacité est souvent limitée par le défi de l'observabilité partielle, où les agents doivent agir sur la base d'informations locales incomplètes. Bien que des méthodes telles que le Multi-Agent Masked Auto-Encoder (${MA}^2E$) tentent de résoudre ce problème en apprenant à reconstruire une information globale, leur dépendance à une stratégie de masquage aléatoire et agnostique de la politique crée une déconnexion entre l'apprentissage de la représentation et l'objectif principal de l'apprentissage par renforcement.
+
+Cette thèse introduit un nouveau framework, le Masquage Informé par l'Apprentissage pour l'Apprentissage par Renforcement Multi-Agents ($LI-{MA}^2E$), qui comble cette lacune. Notre approche introduit un \textit{Évaluateur Conscient de la Politique} qui utilise des signaux d'entraînement en temps réel, tels que l'erreur de différence temporelle (TD-error), pour masquer intelligemment et de manière adaptative les agents peu performants. Cela contraint l'auto-encodeur à concentrer sa puissance de représentation là où elle est le plus nécessaire, créant ainsi un curriculum d'apprentissage plus efficace.
+
+À travers une évaluation empirique rigoureuse sur le benchmark StarCraft Multi-Agent Challenge (SMAC), nous démontrons que cette approche informée par l'apprentissage est supérieure au masquage aléatoire. Notre investigation méthodique montre qu'une stratégie de masquage simple et adaptative basée sur l'erreur TD moyenne donne les meilleures performances. Le framework final $LI-{MA}^2E$ permet non seulement d'accomplir les tâches plus rapidement (taux de victoire), mais aussi d'apprendre des politiques de meilleure qualité et plus robustes (retour moyen), ce qui s'explique par un processus d'apprentissage sous-jacent plus stable. Ce travail confirme que l'alignement dynamique de la tâche de reconstruction auto-supervisée avec l'objectif de l'AR est un mécanisme puissant pour améliorer les performances du MARL en condition d'observabilité partielle.
+
+\vspace{1cm}
+
+
+\noindent\rule[2pt]{\textwidth}{0.5pt}
+
+{\textbf{Mots clés :}}
+Apprentissage par Renforcement Multi-Agents (MARL), Observabilité Partielle, Auto-Encodeur Masqué, Apprentissage de Représentation, Apprentissage par Renforcement Profond, Coordination.
+
+
+\noindent\rule[2pt]{\textwidth}{0.5pt}
+
+% \clearpage
+% \chapter*{\hfill \begin{Arabic} ملخص \end{Arabic}}
+
+% \begin{Arabic}
+% \addcontentsline{toc}{chapter}{ ملخص}
+% \end{Arabic}
+
+
+ 
+
+% % \begin{Arabic}
+% % يُعتبر التعلم المعزز متعدد الوكلاء (MARL) إطاراً قوياً لتعلم الآلة، حيث يمكن للعديد من الوكلاء المستقلين التعلم لتحسين أداء النظام من خلال التجربة. تهدف معظم تطبيقات MARL إلى تحسين الأنظمة فيما يتعلق بهدف واحد أو أهداف متعددة. يواجه MARL العديد من المشاكل، من بينها: تخصيص الائتمان، تخصيص الموارد، الرؤية الجزئية، عدم استقرار البيئة، وقابلية التوسع.
+
+% % \end{Arabic}
+
+% % \medskip
+
+% % \begin{Arabic}
+
+% % تم اقتراح تشكيل المكافآت كوسيلة لمعالجة مشكلة تخصيص الائتمان في MARL أحادي الهدف. ومع ذلك، تم إثبات أنه يمكن أن يغير الأهداف المقصودة للمجال إذا أسيء استخدامه، مما يؤدي إلى سلوك غير مقصود. يُعتبر تشكيل المكافآت بناءً على الإمكانيات (PBRS) طريقة تشكيل شائعة الاستخدام في MARL، والتي أثبتت مراراً وتكراراً أنها تحسن سرعة التعلم وجودة السياسات المشتركة التي يتعلمها الوكلاء.
+
+% % \end{Arabic}
+
+% % \medskip
+
+% \begin{Arabic}
+  
+% يُعد تعلم التعزيز متعدد الوكلاء (MARL) نموذجًا قويًا لحل مهام التنسيق المعقدة، ولكن فعاليته غالبًا ما تكون محدودة بسبب تحدي الملاحظة الجزئية، حيث يجب على الوكلاء التصرف بناءً على معلومات محلية غير كاملة. بينما تحاول أساليب مثل التشفير التلقائي المقنّع متعدد الوكلاء (${MA}^2E$) معالجة هذه المشكلة عن طريق تعلم إعادة بناء المعلومات الشاملة، فإن اعتمادها على استراتيجية إخفاء عشوائية وغير مرتبطة بسياسة التعلم يخلق فصلاً بين مهمة تعلم التمثيل والهدف الأساسي لتعلم التعزيز.
+% تقدم هذه الأطروحة إطارًا جديدًا، وهو الإخفاء المستنير بالتعلم لتعلم التعزيز متعدد الوكلاء ($LI-{MA}^2E$)، والذي يسد هذه الفجوة. يقدم نهجنا "مسجلًا واعيًا بالسياسة" يستفيد من إشارات التدريب في الوقت الفعلي، مثل خطأ الفارق الزمني (TD-error)، لإخفاء الوكلاء ذوي الأداء الضعيف بذكاء وبشكل تكيفي. هذا يجبر المشفر التلقائي على تركيز قدرته التمثيلية حيث تشتد الحاجة إليها، مما يخلق منهجًا تعليميًا أكثر كفاءة وفعالية.
+
+% من خلال تقييم تجريبي دقيق على منصة تحدي ستاركرافت متعدد الوكلاء (SMAC)، نثبت أن هذا النهج المستنير بالتعلم يتفوق على الإخفاء العشوائي. يوضح تحقيقنا المنهجي أن استراتيجية إخفاء بسيطة وتكيفية تعتمد على متوسط خطأ الفارق الزمني تحقق أفضل أداء. إطار $LI-{MA}^2E$ النهائي لا يحقق فقط إنجازًا أسرع للمهام (معدل الفوز)، ولكنه يتعلم أيضًا سياسات ذات جودة أعلى وأكثر قوة (متوسط العائد)، وهو ما يفسره عملية تعلم أساسية أكثر استقرارًا. يؤكد هذا العمل أن المواءمة الديناميكية لمهمة إعادة البناء ذاتية الإشراف مع هدف تعلم التعزيز هي آلية قوية لتعزيز أداء تعلم التعزيز متعدد الوكلاء في ظل الملاحظة الجزئية.
+% \end{Arabic}
+
+
+% % \medskip
+
+% % \vspace{1.3cm}
+
+% \noindent\rule[2pt]{\textwidth}{0.5pt}
+
+
+% \begin{Arabic}
+
+% \textbf{كلمات مفتاحية :}
+
+% تعلم التعزيز متعدد الوكلاء (MARL)، الملاحظة الجزئية، المشفر التلقائي المقنّع، تعلم التمثيل، تعلم التعزيز العميق، التنسيق.
+% \end{Arabic}
+
+% \noindent\rule[2pt]{\textwidth}{0.5pt}
+

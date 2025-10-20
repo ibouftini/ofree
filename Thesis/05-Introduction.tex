@@ -1,0 +1,25 @@
+\chapter*{General Introduction}
+\addcontentsline{toc}{chapter}{General Introduction}
+\markboth{General Introduction}{General Introduction}
+\label{chap:introduction}
+
+
+The proliferation of autonomous systems, from robotic teams to swarms of Unmanned Aerial Vehicles (UAVs), has highlighted a critical need for robust multi-agent coordination. Multi-Agent Reinforcement Learning (MARL) has emerged as a powerful paradigm for developing decentralized policies for these systems, but its real-world application is frequently hindered by the fundamental challenge of \textbf{partial observability}. In most realistic scenarios, agents lack a global view of their environment and must make complex, coordinated decisions based on limited, local sensory input. This information gap is a primary obstacle to achieving optimal team performance.
+
+While the Centralized Training with Decentralized Execution (CTDE) framework has become a standard approach, a disconnect often remains between the global information used during training and the local perspective available at execution. Recent advances in representation learning, particularly the Multi-Agent Masked Auto-Encoder ($MA^2E$) \cite{ma2e}, have shown great promise in bridging this gap by enabling agents to reconstruct a global view from partial data. However, the effectiveness of the original $MA^2E$ is constrained by its reliance on a \textbf{policy-agnostic, random masking strategy}. This creates a crucial disconnect, as the self-supervised reconstruction task is not aligned with the primary reinforcement learning objective, meaning the model does not focus its learning on the most challenging aspects of the cooperative task.
+
+This thesis directly addresses this limitation by proposing and validating the \textbf{Learning-Informed Masking Framework ($LI-MA^2E$)}. Our central hypothesis is that by dynamically aligning the reconstruction task with the agent's learning progress, we can create a more efficient and effective learning curriculum. Our framework achieves this by introducing a \textit{Policy-Aware Scorer} that uses real-time training signals, specifically the Temporal Difference (TD) error, to intelligently and adaptively mask agents that are performing poorly. This forces the auto-encoder to focus its representational power where it is needed most, thereby enhancing coordination and overall performance.
+
+To present this contribution, the thesis is structured as follows:
+
+\textbf{Chapter 1} establishes the institutional and conceptual foundations for the project. It presents the host organization, Mohammed VI Polytechnic University (UM6P) and its Ai Movement center, before detailing the project's framework, objectives, and real-world use cases, particularly the coordination of UAVs in partially observable environments.
+
+\textbf{Chapter 2} provides the necessary theoretical background for the reader. It begins with the principles of single-agent RL, including Markov Decision Processes and Bellman equations, before extending these concepts to the multi-agent domain and its core challenges, with a focus on the CTDE paradigm.
+
+\textbf{Chapter 3} reviews the relevant literature to situate our contribution. We analyze foundational CTDE algorithms like VDN and QMIX, as well as more advanced representation learning techniques. Critically, we examine the original $MA^2E$ framework to formally identify the research gap—its reliance on random masking—that our work aims to fill.
+
+\textbf{Chapter 4} formally details our proposed $LI-MA^2E$ methodology. We deconstruct the principles of the Masked Auto-Encoder and present our novel architecture, which incorporates a \textit{Policy-Aware Scorer}. We explain our two-phase training process and the integration of our learning-informed masking strategy with the backbone MARL algorithm.
+
+\textbf{Chapter 5} provides a comprehensive empirical validation of our framework. It begins with a methodical investigation into several candidate scoring functions, justifying our final design choice. It then presents the main results, structured as a series of research questions, to demonstrate the superiority of $LI-MA^2E$ over the baseline in terms of task completion (win rate), policy quality (mean test return), and learning stability (TD-error).
+
+\textbf{Chapter 6} summarizes the key findings of the thesis, discusses the broader implications of our work, acknowledges its limitations, and proposes promising directions for future research.
