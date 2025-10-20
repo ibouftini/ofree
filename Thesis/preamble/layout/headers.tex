@@ -1,0 +1,62 @@
+%%% Headers and footers, page styles
+\usepackage{fancyhdr}       % custom headers and footers
+
+%% Disable `fancyhdr` warning: "\fancyhead's `E' option without twoside option is useless.
+%%                               Please consider using the `twoside' option"
+\makeatletter
+\def\f@nch@fancyhf@Echeck#1{}
+\makeatother
+
+\newlength{\headerpadding}  % left/right padding of header
+\setlength{\headerpadding}{2pt}
+% \RenewDocumentCommand{\chaptermark}{m}{\markboth{\chaptername\ \thechapter.\ #1}{\chaptername\ \thechapter.\ #1}}
+% \RenewDocumentCommand{\sectionmark}{m}{\markright{\thesection.\ #1}}
+
+%% Style of the header rule and decorations
+\renewcommand*{\headrulewidth}{0.9pt}
+\tikzset{
+    header rule/.style={HeaderRuleColor},
+    header decor/.style={HeaderRuleColor,line width=1.0pt,-{Diamond[open]},overlay},
+}
+%% Save default/chapter header rules in boxes for faster later use
+%%                 (no need to recompile the TikZ code every time)
+\newsavebox{\defaultheaderrule}
+\newsavebox{\chapterheaderrule}
+\sbox{\defaultheaderrule}{% full width header rule (optinally with decorations)
+    \tikz[baseline=-1em]{
+        \fill[header rule] (0,0) rectangle (\textwidth,\headrulewidth);
+        \ifFANCY % add fancy decorations
+            \draw[header decor] (\textwidth,\headrulewidth/2) -- ++( 7pt,0);
+            \draw[header decor] (         0,\headrulewidth/2) -- ++(-7pt,0);
+        \fi
+    }%
+}
+\sbox{\chapterheaderrule}{% half width header rule (optinally with decoration)
+    \tikz[baseline=-1em]{
+        \fill[header rule, path fading=west] (0,0) rectangle (0.45\textwidth,\headrulewidth);
+        \ifFANCY % add fancy decoration (just on the right side)
+            \draw[header decor] (0.45\textwidth,\headrulewidth/2) -- ++(7pt,0);
+        \fi
+    }%
+}
+
+%% Default header style
+\fancypagestyle{header}{
+    \renewcommand*{\headrule}{\usebox{\defaultheaderrule}\linebreak[1]}
+    \fancyhead[LO]{\color{HeaderColor}\hspace{\headerpadding}\textsf{\nouppercase{\leftmark}}}
+    % \fancyhead[LO]{\hspace{\headerpadding}\textcolor{HeaderColor}{\textsf{\nouppercase{\rightmark}}}}
+    \fancyhead[RE]{\color{HeaderColor}\textsf{\nouppercase{\rightmark}}\hspace{\headerpadding}}
+    \fancyhead[RO]{\textbf{\thepage}\hspace{\headerpadding}}
+    \fancyhead[LE]{\hspace{\headerpadding}\textbf{\thepage}}
+    \fancyfoot{}
+    \ifWIP % show draft watermark in footer
+        \fancyfoot[C]{\vskip1ex\relax \ttfamily\textcolor{black!15}{Draft - \today}}
+    \fi
+}
+%% For chapter pages, the `plain` style is used
+\fancypagestyle{plain}[header]{
+    %% NOTE: following does not handle properly the even-numbered pages for the two-sided printing
+    \renewcommand*{\headrule}{\hfill\usebox{\chapterheaderrule}\linebreak[1]}
+    \fancyhead[LO,RE]{} % leave only the page number
+}
+\pagestyle{header} % set up the default header style

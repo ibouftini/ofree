@@ -1,0 +1,19 @@
+%% Inkscape figures
+%% https://mirrors.nic.cz/tex-archive/info/svg-inkscape/InkscapePDFLaTeX.pdf
+%% this is (and a lot more) already implemented in `svg` package, but no reason to use it
+%% TODO: disable this for ArXiv submission (probably just leaving SVGs out will work fine)
+\usepackage{shellesc}
+\usepackage{filemod}
+\NewDocumentCommand{\exportInkscapeSVG}{O{./figures/Inkscape/} m}{%
+    \filemodCmp{#1#2.pdf}{#1#2.svg}{}{% regenerate PDF+LaTeX code if SVG is newer
+        \ClassNote{TeXtured}{(Re)generating Inkscape SVG to PDF+LaTeX figure:\MessageBreak #1#2.svg}%
+        \ShellEscape{#1inkscape-export-to-latex "#1#2"}% use `inkscape-export-to-latex` script in the same directory
+    }%
+}
+%% the third argument is the name of the SVG file without the extension
+\NewDocumentCommand{\includeInkscapeSVG}{O{0.8\linewidth} O{./figures/Inkscape/} m}{%
+    \exportInkscapeSVG[#2]{#3}%
+    \def\svgwidth{#1}% set the width of the figure
+    \input{#2#3.pdf_tex}%
+}
+\DeclareCommandCopy{\includesvg}{\includeInkscapeSVG} % alias

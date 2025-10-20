@@ -1,0 +1,40 @@
+%% Hyperlinks, PDF metadata
+\usepackage[allowmove]{url}
+\usepackage{hyperref}   % clickable links and metadata
+\usepackage{bookmark}   % more control over PDF bookmarks
+
+\usepackage{zref-titleref}
+\usepackage{zref-clever}
+\zcsetup{
+    cap,     % capitalize the first letter of the reference type name
+    noabbrev % do not use abbreviations
+}
+
+%% Fallbacks for PDF metadata commands
+\providecommand*{\ThesisAuthorPlaintext}{\ThesisAuthor}
+\providecommand*{\ThesisTitlePlaintext}{\ThesisTitle}
+\providecommand*{\KeywordsPlaintext}{\Keywords}
+
+\hypersetup{
+    linktoc = all,         % whole entry in TOC is clickable link
+    colorlinks = true,     % color links/references (if not using boxed variants provided by \Cref{...})
+    urlcolor = [rgb]{0.82,0.25,0.08}, % tweak the default URL color
+    pdfborder = {0 0 0},   % to disable borders/frames around links (even when colorlinks=false)
+    pdflinkmargin = 1.0pt, % extra link area around the text box (default 1pt)
+    pdfdisplaydoctitle,    % https://tex.stackexchange.com/a/435434/120853
+}
+\hypersetup{ % PDF metadata
+    pdfauthor   = {\ThesisAuthorPlaintext},
+    pdftitle    = {\ThesisTitlePlaintext},
+    pdfsubject  = {\Subject},
+    pdfkeywords = {\KeywordsPlaintext},
+    pdfcreator  = {LaTeX with hyperref, and biblatex/biber},
+}
+\bookmarksetup{
+    numbered, % include chapter/section numbers in PDF outline
+    open, openlevel=1, % expand bookmarks to level 1 (chapters)
+}
+
+
+%% NOTE: look of references, hyperlinks, and citations is customized
+%%       mainly in `preamble/hacks/custom-reference-boxes.tex`
