@@ -227,24 +227,20 @@ Phase 1 (texliveonfly) → Phase 2 (latexmk if needed) → Commit PDF
 
 ### Force Fresh Installation
 ```yaml
-key: texlive-fonts-2025-v6-${{ runner.os }}  # increment version
+key: texlive-fonts-2025-v6-${{ runner.os }}  # increment the cache version or change it to whatever you want
 ```
-
----
 
 ## 📋 Requirements
 
 | Requirement | Description |
 |-------------|-------------|
 | 🔐 **Write Permissions** | Enable in Actions settings |
-| 📁 **Root Directory** | `.tex` files must be in repository root |
 | 📄 **Document Class** | Files must contain `\documentclass` |
 
 ---
 
 ## ⚠️ Limitations
 
-- 📁 Documents must be in repository root (not subdirectories)
 - 📦 Binary PDFs committed to repository (may bloat git history)
 - 🔍 Requires `\documentclass` to detect main documents
 
