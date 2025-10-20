@@ -227,7 +227,7 @@ Phase 1 (texliveonfly) → Phase 2 (latexmk if needed) → Commit PDF
 
 ### Force Fresh Installation
 ```yaml
-key: texlive-fonts-2025-v6-${{ runner.os }}  # increment the cache version or change it to whatever you want
+key: texlive-fonts-2025-v6-${{ runner.os }}  # increment the cache version or name it whatever you want
 ```
 
 ## 📋 Requirements
@@ -237,7 +237,25 @@ key: texlive-fonts-2025-v6-${{ runner.os }}  # increment the cache version or ch
 | 🔐 **Write Permissions** | Enable in Actions settings |
 | 📄 **Document Class** | Files must contain `\documentclass` |
 
----
+
+## 🔧 Troubleshooting
+
+<details>
+<summary><b>PDF not committing back?</b></summary>
+
+Check workflow permissions:
+1. Settings → Actions → General
+2. Enable "Read and write permissions"
+3. Re-run the workflow
+</details>
+
+<details>
+<summary><b>Compilation fails with missing package?</b></summary>
+
+Most packages install automatically. If you encounter issues:
+- Check the workflow logs for the specific package name
+- Add it manually in the workflow (see Advanced Configuration)
+</details>
 
 ## ⚠️ Limitations
 
