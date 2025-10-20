@@ -1,0 +1,12 @@
+\documentclass[../Main.tex]{subfiles}
+\begin{document}
+
+L'Apprentissage par Renforcement Multi-Agents (MARL) coopératif s'est révélé très prometteur pour la résolution de tâches de coordination complexes, mais les algorithmes de premier plan comme QMIX font face à d'importants défis de passage à l'échelle. Ces défis découlent de composants centralisés qui imposent une coordination globale entre tous les agents à chaque pas de temps, ce qui entraîne des goulots d'étranglement calculatoires lorsque le nombre d'agents augmente. Ce projet étudie l'hypothèse selon laquelle une telle coordination globale est souvent redondante et que le système est robuste à la perte d'information.
+
+Pour tester cette hypothèse, nous introduisons et évaluons QMIX-Masked, une variante légère qui applique un masquage aléatoire aux entrées des agents avant qu'elles n'entrent dans le réseau de mélange central. En utilisant le défi exigeant StarCraft Multi-Agent Challenge (SMAC) comme notre principal banc d'essai, nos résultats empiriques démontrent que la performance du système ne se dégrade pas de manière significative, même avec des taux de masquage allant jusqu'à 60\%. Cette robustesse surprenante suggère qu'une redondance considérable existe dans la décomposition de valeur globale de QMIX. Nos résultats ouvrent des pistes prometteuses pour le développement de mécanismes de coordination sélective plus efficaces et plus scalables, ouvrant ainsi la voie à la prochaine génération d'algorithmes MARL.
+
+\par\vspace*{\fill} % Déplace les mots-clés en bas de la page
+\textbf{\textit{Mots-clés --}} Apprentissage par Renforcement Multi-Agents (MARL), Deep Q-Learning, QMIX, Scalabilité, Décomposition de valeur, StarCraft Multi-Agent Challenge (SMAC).
+
+\biblio % Nécessaire pour les références lors de la compilation de sous-fichiers - Ne pas retirer
+\end{document}
