@@ -65,23 +65,38 @@ jobs:
             fi
           done
         else
-          CHANGED_IN_GIT=$(git diff --name-only HEAD^ HEAD 2>/dev/null | grep -E '\.(tex|bib|cls|sty)$' || true)
+          # Get changed files with their status (A=added, M=modified, D=deleted, R=renamed)
+          CHANGED_FILES=$(git diff --name-status HEAD^ HEAD 2>/dev/null | grep -E '\.(tex|bib|cls|sty)$' || true)
           
-          if [ -z "$CHANGED_IN_GIT" ]; then
+          if [ -z "$CHANGED_FILES" ]; then
             echo "No LaTeX-related files changed in this commit"
             echo "HAS_CHANGES=false" >> $GITHUB_OUTPUT
             echo "========================================================"
             exit 0
           fi
           
-          echo "Git detected changes in:"
-          echo "$CHANGED_IN_GIT"
+          echo "Git detected changes:"
+          echo "$CHANGED_FILES"
+          echo ""
+          
+          # Separate files by status
+          ADDED_FILES=$(echo "$CHANGED_FILES" | awk '$1 == "A" {print $2}' || true)
+          MODIFIED_FILES=$(echo "$CHANGED_FILES" | awk '$1 == "M" {print $2}' || true)
+          DELETED_FILES=$(echo "$CHANGED_FILES" | awk '$1 == "D" {print $2}' || true)
+          RENAMED_FILES=$(echo "$CHANGED_FILES" | awk '$1 ~ /^R/ {print $3}' || true)  # Get new name for renamed files
+          
+          # Combine files that actually exist (not deleted)
+          EXISTING_CHANGED=$(echo -e "$ADDED_FILES\n$MODIFIED_FILES\n$RENAMED_FILES" | grep -v '^$' || true)
+          
+          echo "Files to consider (excluding deleted):"
+          echo "$EXISTING_CHANGED"
           echo ""
           echo "Analyzing impact on each document..."
           echo "----------------------------------------"
           
           shopt -s globstar nullglob
           for file in **/*.tex; do
+            # Skip if not a main document
             if ! grep -q '\\documentclass' "$file"; then
               continue
             fi
@@ -90,23 +105,33 @@ jobs:
             NEEDS_COMPILE=false
             REASON=""
             
-            if echo "$CHANGED_IN_GIT" | grep -q "^${file}$"; then
+            # Check 1: Was this main file itself changed?
+            if echo "$EXISTING_CHANGED" | grep -q "^${file}$"; then
               NEEDS_COMPILE=true
               REASON="main file changed"
             fi
             
+            # Check 2: Were any of its includes changed?
             if [ "$NEEDS_COMPILE" = "false" ]; then
+              # Extract included files
               INCLUDES=$(grep -E '\\input\{|\\include\{' "$file" 2>/dev/null | sed -E 's/.*\\(input|include)\{([^}]+)\}.*/\2/' || true)
+              
               for inc in $INCLUDES; do
+                # Add .tex extension if missing
                 [[ "$inc" != *.tex ]] && inc="${inc}.tex"
                 
+                # Resolve path relative to main file
                 if [[ "$inc" = /* ]] || [[ "$inc" = ~* ]]; then
                   INC_PATH="$inc"
                 else
                   INC_PATH="${FILE_DIR}/${inc}"
                 fi
                 
-                if echo "$CHANGED_IN_GIT" | grep -q "$INC_PATH\|$inc"; then
+                # Normalize path
+                INC_PATH=$(echo "$INC_PATH" | sed 's|/\./|/|g; s|//|/|g')
+                
+                # Check if this include was changed (and not deleted)
+                if echo "$EXISTING_CHANGED" | grep -qF "$INC_PATH" || echo "$EXISTING_CHANGED" | grep -qF "$inc"; then
                   NEEDS_COMPILE=true
                   REASON="included file $inc changed"
                   break
@@ -114,18 +139,77 @@ jobs:
               done
             fi
             
+            # Check 3: Were bibliography files used by this document changed?
             if [ "$NEEDS_COMPILE" = "false" ]; then
-              if grep -qE '\\cite|\\bibliography|\\addbibresource' "$file" && echo "$CHANGED_IN_GIT" | grep -q '\.bib$'; then
-                NEEDS_COMPILE=true
-                REASON="bibliography changed"
+              # Check if document uses bibliography
+              if grep -qE '\\cite|\\bibliography|\\addbibresource' "$file"; then
+                # Extract specific .bib files referenced
+                BIB_FILES=$(grep -E '\\bibliography\{|\\addbibresource\{' "$file" 2>/dev/null | \
+                           sed -E 's/.*\\(bibliography|addbibresource)(\[[^]]*\])?\{([^}]+)\}.*/\3/' | \
+                           tr ',' '\n' || true)
+                
+                if [ -n "$BIB_FILES" ]; then
+                  # Check specific bib files
+                  for bib in $BIB_FILES; do
+                    [[ "$bib" != *.bib ]] && bib="${bib}.bib"
+                    
+                    if [[ "$bib" = /* ]] || [[ "$bib" = ~* ]]; then
+                      BIB_PATH="$bib"
+                    else
+                      BIB_PATH="${FILE_DIR}/${bib}"
+                    fi
+                    
+                    BIB_PATH=$(echo "$BIB_PATH" | sed 's|/\./|/|g; s|//|/|g')
+                    
+                    if echo "$EXISTING_CHANGED" | grep -qF "$BIB_PATH" || echo "$EXISTING_CHANGED" | grep -qF "$bib"; then
+                      NEEDS_COMPILE=true
+                      REASON="bibliography file $bib changed"
+                      break
+                    fi
+                  done
+                else
+                  # No specific bib files found, check if any .bib changed in same directory or subdirs
+                  if echo "$EXISTING_CHANGED" | grep -q "^${FILE_DIR}/.*\.bib$"; then
+                    NEEDS_COMPILE=true
+                    REASON="bibliography file in document directory changed"
+                  fi
+                fi
               fi
             fi
             
+            # Check 4: Were class or style files used by this document changed?
             if [ "$NEEDS_COMPILE" = "false" ]; then
-              if echo "$CHANGED_IN_GIT" | grep -qE '\.(cls|sty)$'; then
-                NEEDS_COMPILE=true
-                REASON="class or style file changed"
-              fi
+              # Extract documentclass
+              DOC_CLASS=$(grep -E '\\documentclass' "$file" | sed -E 's/.*\\documentclass(\[[^]]*\])?\{([^}]+)\}.*/\2/' | head -1)
+              
+              # Extract used packages
+              PACKAGES=$(grep -E '\\usepackage' "$file" | sed -E 's/.*\\usepackage(\[[^]]*\])?\{([^}]+)\}.*/\2/' | tr ',' '\n' || true)
+              
+              # Check if any changed .cls/.sty matches what this document uses
+              for changed in $(echo "$EXISTING_CHANGED" | grep -E '\.(cls|sty)$' || true); do
+                CHANGED_BASE=$(basename "$changed" | sed 's/\.(cls|sty)$//')
+                
+                # Check against documentclass
+                if [ "$DOC_CLASS" = "$CHANGED_BASE" ]; then
+                  NEEDS_COMPILE=true
+                  REASON="document class $changed changed"
+                  break
+                fi
+                
+                # Check against packages
+                if echo "$PACKAGES" | grep -q "^${CHANGED_BASE}$"; then
+                  NEEDS_COMPILE=true
+                  REASON="style package $changed changed"
+                  break
+                fi
+                
+                # Check if it's in the same directory (likely custom class/style)
+                if [[ "$changed" == "$FILE_DIR"* ]]; then
+                  NEEDS_COMPILE=true
+                  REASON="local class/style file $changed changed"
+                  break
+                fi
+              done
             fi
             
             if [ "$NEEDS_COMPILE" = "true" ]; then
