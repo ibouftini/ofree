@@ -13,7 +13,7 @@ Get your LaTeX documents compiling automatically in **3 simple steps**:
 
 Click the **Fork** button at the top right of this page.
 
-### 2️⃣ Enable write permissions
+### 2️⃣ Enable the workflow
 
 - Go to the Actions tab in the forked repo
 
