@@ -15,13 +15,9 @@ Click the **Fork** button at the top right of this page.
 
 ### 2️⃣ Enable write permissions
 
-Navigate to your fork's settings:
+- Go to the Actions tab in the forked repo
 
-```
-Settings → Actions → General → Workflow permissions
-```
-
-Select **"Read and write permissions"** → Click **Save**
+- Click the button that says "I understand my workflows, go ahead and enable them"
 
 ### 3️⃣ Start writing LaTeX
 
